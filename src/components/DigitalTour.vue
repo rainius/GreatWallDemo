@@ -72,7 +72,21 @@
           <strong>[Ether]</strong> <span v-html="currentText"></span>
         </div> -->
 
-<div class="toggle-switch" :class="{ 'active': isGuideActive }" @click="toggleGuide"></div>
+<div class="toggle-switch" :class="{ 'active': isGuideActive }" @click="togglePanel">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+
+        <div class="panel" :class="{ 'hidden': !isPanelOpen }">
+          <button class="panel-btn" @click="switchModel('萧儿')">
+            <i class="fa-solid fa-user"></i> 萧儿
+          </button>
+          <button class="panel-btn" @click="switchModel('芍药')">
+            <i class="fa-solid fa-user"></i> 芍药
+          </button>
+          <button class="panel-btn" @click="toggleGuide">
+            <i class="fa-solid fa-eye"></i> {{ isGuideActive ? '隐藏' : '展示' }}
+          </button>
+        </div>
 
         <div class="digital-human-avatar" :class="{ 'hidden': !isGuideActive }">
           <div class="live2d-container" ref="live2dContainer">
@@ -108,6 +122,7 @@ let app1 = null;
 
 // --- 状态 ---
 const isGuideActive = ref(true);
+const isPanelOpen = ref(false);
 const currentText = ref('欢迎来到八达岭。这张全景图包含了长城的精华路段。您可以<b>拖动屏幕</b>来自由浏览，寻找发光的讲解点。');
 const showHint = ref(true);
 
@@ -183,11 +198,22 @@ const endDrag = () => {
 };
 
 // --- 业务逻辑 ---
+const togglePanel = () => {
+  isPanelOpen.value = !isPanelOpen.value;
+};
+
 const toggleGuide = () => {
   isGuideActive.value = !isGuideActive.value;
+  isPanelOpen.value = false;
   if (isGuideActive.value) {
     currentText.value = "导览已继续。拖动画面寻找下一个景点吧。";
   }
+};
+
+const switchModel = (modelName) => {
+  console.log(`切换到数字人: ${modelName}`);
+  isPanelOpen.value = false;
+  // 这里可以添加切换数字人的逻辑
 };
 
 const handlePoiClick = (name) => {
@@ -557,15 +583,44 @@ const initPositionTopRight = () => {
   background: linear-gradient(135deg, #8b5cf6, #3b82f6);
   box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
 }
-.toggle-switch::before {
-  content: '\f4fb';
-  font-family: 'Font Awesome 6 Free';
-  font-weight: 900;
+.toggle-switch i {
   color: white;
   font-size: 1.2rem;
 }
-.toggle-switch.active::before {
-  content: '\f4fb';
+
+.panel {
+  position: absolute;
+  bottom: 60px;
+  right: 0;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+  transition: 0.3s;
+  backdrop-filter: blur(10px);
+}
+.panel.hidden {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+.panel-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: 0.2s;
+}
+.panel-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* 动画 */
