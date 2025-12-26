@@ -122,7 +122,7 @@ let app1 = null;
 
 // --- 状态 ---
 const isGuideActive = ref(true);
-const isPanelOpen = ref(false);
+const isPanelOpen = ref(true);
 const currentText = ref('欢迎来到八达岭。这张全景图包含了长城的精华路段。您可以<b>拖动屏幕</b>来自由浏览，寻找发光的讲解点。');
 const showHint = ref(true);
 
@@ -213,6 +213,7 @@ const toggleGuide = () => {
 const switchModel = (modelName) => {
   console.log(`切换到数字人: ${modelName}`);
   isPanelOpen.value = false;
+  isGuideActive.value = true; // 切换模型时自动显示数字人
   // 这里可以添加切换数字人的逻辑
 };
 
@@ -265,7 +266,11 @@ onMounted(() => {
 
   setTimeout(async () => {
     try {
-      const modelPath = "./models/萧儿/萧儿 -全身.model3.json";
+      const XIAOER_MODEL_PATH = "./models/萧儿/萧儿 -全身.model3.json";
+const XIAOER_AUDIO_PATH = "./models/萧儿/萧儿声音.mp3";
+const SHAOYAO_MODEL_PATH = "./models/芍药/芍药 -全身.model3.json";
+const SHAOYAO_AUDIO_PATH = "./models/芍药/芍药声音.mp3";
+const modelPath = XIAOER_MODEL_PATH;
       const loadedModel2 = await live2d.Live2DModel.from(modelPath,  { autoInteract: false });
       loadedModel2.position.x = 0
       loadedModel2.position.y = 0
