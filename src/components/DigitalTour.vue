@@ -10,16 +10,16 @@
 
       <!-- POI 点 (现在是相对于图片的绝对定位) -->
       <!-- style 中的 top/left 使用百分比，确保永远钉在图片的特定位置 -->
-      <div class="poi-marker" style="top: 25%; left: 88%;" @click.stop="handlePoiClick('北八楼')">
+      <div class="poi-marker" style="top: 18%; left: 88%;" @click.stop="handlePoiClick('北八楼', $event)">
         <div class="poi-icon-wrapper">
           <i class="fa-solid fa-location-dot"></i>
         </div>
         <div class="poi-label">北八楼讲解点</div>
       </div>
 
-      <div class="poi-marker" style="top: 45%; left: 65%;" @click.stop="handlePoiClick('好汉坡')">
+      <div class="poi-marker" style="top: 45%; left: 65%;" @click.stop="handlePoiClick('好汉坡', $event)">
         <div class="poi-icon-wrapper">
-          <i class="fa-solid fa-mountain-sun"></i>
+          <i class="fa-solid fa-location-dot"></i>
         </div>
         <div class="poi-label">好汉坡讲解点</div>
       </div>
@@ -28,7 +28,7 @@
     <!-- 2. 固定 UI 层 (不受拖拽影响) -->
     <div class="ui-layer">
       <!-- 遮罩 (可选，增加氛围，不阻挡鼠标事件) -->
-      <div class="vignette-overlay"></div>
+      <!-- <div class="vignette-overlay"></div> -->
 
       <!-- 顶部导航 -->
       <div class="header-bar">
@@ -39,9 +39,9 @@
       </div>
 
       <!-- 拖拽提示 (仅在初始显示) -->
-      <div class="drag-hint" v-if="showHint">
+      <!-- <div class="drag-hint" v-if="showHint">
         <i class="fa-solid fa-hand-pointer"></i> 拖拽探索全景
-      </div>
+      </div> -->
 
       <!-- 数字人区域 -->
       <div class="guide-area">
@@ -65,10 +65,10 @@
           </button>
         </div>
 
-        <div class="digital-human-avatar" :class="{ 'hidden': !isGuideActive }"
-          :style="{ transform: `translate(${avatarCurrentPos.x}px, ${avatarCurrentPos.y}px)` }"
+        <div class="digital-human-avatar" :class="{ 'hidden': !isGuideActive }" :style="avatarStyle"
           @mousedown="startAvatarDrag" @touchstart="startAvatarDrag" @mousemove="onAvatarDrag" @touchmove="onAvatarDrag"
-          @mouseup="endAvatarDrag" @touchend="endAvatarDrag" @mouseleave="endAvatarDrag" ref="avatarRef">
+          @mouseup="endAvatarDrag" @touchend="endAvatarDrag" @mouseleave="endAvatarDrag" ref="avatarRef"
+          >
           <div class="live2d-container" ref="live2dContainer">
             <canvas ref="canvas" id="live2d-canvas"></canvas>
           </div>
@@ -80,7 +80,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, nextTick } from 'vue';
 
 // @ 符号在 Vue 中通常代表 src 目录
 import bgImage from '@/assets/gw.jpeg';
@@ -214,7 +214,7 @@ const loadModel = async (model_path, model_scale = 0.5, x = 0, y = 0) => {
     loadedModel2.position.x = x
     loadedModel2.position.y = y
 
-    
+
     // motionSync = new MotionSync(loadedModel2.internalModel);
     // motionSync.loadMotionSyncFromUrl("./models/蓝风铃/铃兰分层.motionsync3.json");
 
@@ -263,21 +263,135 @@ const switchModel = async (modelName) => {
   }
 };
 
-const handlePoiClick = (name) => {
-  console.log("handlePoiClick", name)
-  if (!isDragging.value) { // 防止拖拽结束时误触点击
-    if (!isGuideActive.value) isGuideActive.value = true;
-    let spk = "./beibalou.mp3";
-    if (name === '北八楼') {
-      currentText.value = "这是<b>北八楼</b>。通过观察孔，您可以发现墙体的厚度是经过精密计算的，既能抵御火炮，又方便瞭望。";
-      spk = "./beibalou.mp3";
-    } else if (name === '好汉坡') {
-      currentText.value = "不到长城非好汉！这里坡度陡峭，是长城最险峻也是最壮观的路段之一。";
-      spk = "./haohanpo.mp3";
-    }
 
-    playTestAudio(spk);
+// --- 新增状态 ---
+// 用来控制数字人的位置样式
+const avatarStyle = reactive({
+  position: 'fixed', // 必须是 fixed，这样才能统一坐标系
+  bottom: '20px',    // 默认停靠在右下角
+  right: '20px',
+  left: 'auto',      // 清除 left
+  top: 'auto',       // 清除 top
+  transition: 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)', // 添加平滑飞行效果
+  zIndex: 200        // 保证在最上层
+});
+
+const isDocked = ref(true); // 标记是否在默认位置
+// const avatarRef = ref(null);
+const handlePoiClick = async (name, event) => {
+  if (isDragging.value) return; // 防止拖拽误触
+
+  // 1. 激活导览
+  // 1. 激活显示 (如果之前是隐藏的，需要先显示才能获取宽度)
+  if (!isGuideActive.value) {
+    isGuideActive.value = true;
+    await nextTick(); // 等待 DOM 渲染出 display:block
   }
+
+  isPanelOpen.value = false;
+
+  // 2. 获取点击目标的屏幕坐标
+  // event.currentTarget 确保拿到的是 .poi-marker 元素，而不是里面的图标
+  const targetEl = event.currentTarget;
+  const rect = targetEl.getBoundingClientRect();
+
+  // rect.top / rect.left 就是该元素相对于屏幕左上角的像素位置
+  console.log('POI屏幕坐标:', rect.top, rect.left);
+
+  // 3. 计算数字人应该飞去的目标位置
+  // --- 关键修正 1: 获取数字人容器的【真实渲染宽度】 ---
+  // 如果获取失败，回退到 200 (比 CSS 里的 180 大一点，宁宽勿窄)
+  const realAvatarWidth = avatarRef.value?.offsetWidth || 200;
+  const realAvatarHeight = avatarRef.value?.offsetHeight || 220;
+
+  console.log(`数字人真实尺寸: ${realAvatarWidth}x${realAvatarHeight}`);
+
+  // --- 关键修正 2: 坐标计算逻辑 ---
+  const poiCenterX = rect.left + rect.width / 2;
+  const poiCenterY = rect.top + rect.height / 2;
+  const viewportW = window.innerWidth;
+  
+  // 安全半径：增加一点，设为 70px
+  const safeRadius = 70; 
+
+  let targetX, targetY;
+
+  // X 轴计算
+  if (poiCenterX < viewportW / 2) {
+    // POI 在左半屏 -> 数字人去右边
+    // 目标 Left = POI中心 + 半径
+    targetX = poiCenterX + safeRadius + realAvatarWidth;
+  } else {
+    // POI 在右半屏 -> 数字人去左边
+    // 目标 Left = POI中心 - 半径 - 数字人真实宽度
+    targetX = poiCenterX - safeRadius - realAvatarWidth;
+  }
+
+  // Y 轴计算 (垂直居中)
+  targetY = poiCenterY - (realAvatarHeight / 2);
+
+  // 边界保护
+  const padding = 20;
+  const topHeaderHeight = 80;
+  
+  // 防止飞出左/右边界
+  if (targetX < padding) targetX = padding;
+  if (targetX + realAvatarWidth > viewportW - padding) targetX = viewportW - realAvatarWidth - padding;
+
+  // 防止飞出上/下边界
+  if (targetY < topHeaderHeight) targetY = topHeaderHeight;
+  if (targetY + realAvatarHeight > window.innerHeight - padding) targetY = window.innerHeight - realAvatarHeight - padding;
+
+  // --- 关键修正 3: 状态重置与应用 ---
+  isDocked.value = false;
+
+  // 先清除 bottom/right，确保 top/left 优先级最高
+  // 注意：不需要 await nextTick，直接赋值即可，Vue 会合并更新
+  avatarStyle.bottom = 'auto';
+  avatarStyle.right = 'auto';
+  
+  // 直接应用计算出的绝对坐标
+  avatarStyle.left = `${targetX}px`;
+  avatarStyle.top = `${targetY}px`;
+
+  // 5. 播放讲解逻辑 (保持不变)
+  // let spk = "";
+  // if (name === '北八楼') {
+  //   currentText.value = "这是<b>北八楼</b>...";
+  //   spk = "./beibalou.mp3";
+  // } else if (name === '好汉坡') {
+  //   currentText.value = "不到长城非好汉！...";
+  //   spk = "./haohanpo.mp3";
+  // }
+  // playTestAudio(spk);
+};
+
+
+// --- 新增：重置位置函数 (可选) ---
+// 比如点击背景或者点击关闭导览时，飞回右下角
+// eslint-disable-next-line
+const resetAvatarPosition = () => {
+  if (isDocked.value) return;
+  
+  isDocked.value = true;
+  // 先把当前位置定死，防止样式切换时的瞬移（可选优化）
+  
+  // 切换回 Right/Bottom 定位
+  // 注意：CSS transition 会处理从 left/top 到 right/bottom 的插值吗？
+  // 通常浏览器处理 left/right 混合过渡效果不好。
+  // 建议：始终使用 left/top 定位，或者计算出右下角的 left/top 坐标。
+  
+  // 简单方案：直接切回 class 控制，或者如下：
+  avatarStyle.left = window.innerWidth - 180 - 20 + 'px'; // 屏幕宽 - 头像宽 - margin
+  avatarStyle.top = window.innerHeight - 180 - 20 + 'px'; // 屏幕高 - 头像高 - margin
+  
+  // 稍微延迟后清空 style，恢复响应式布局（可选）
+  setTimeout(() => {
+     avatarStyle.left = 'auto';
+     avatarStyle.top = 'auto';
+     avatarStyle.right = '20px';
+     avatarStyle.bottom = '20px';
+  }, 800); // 等动画播完
 };
 
 const goHome = () => { console.log("返回主页"); };
@@ -319,6 +433,7 @@ onMounted(() => {
 
 const isPlaying = ref(false);
 // 播放测试音频
+// eslint-disable-next-line
 const playTestAudio = (spk) => {
   console.log("播放测试音频");
   console.log(model);
@@ -637,22 +752,27 @@ const endAvatarDrag = () => {
 .digital-human-avatar {
 
   /* 1. 尺寸改为正方形，稍微小一点 */
-  width: 160px; 
-  height: 160px; 
+  width: 160px;
+  height: 160px;
   /* 2. 圆形裁剪 */
-  border-radius: 50%; 
-  overflow: hidden; /* 关键：超出圆形的部分会被切掉 */
+  border-radius: 50%;
+  overflow: hidden;
+  /* 关键：超出圆形的部分会被切掉 */
   /* 3. 干净的背景 */
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); /* 柔和的浅灰蓝渐变 */
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  /* 柔和的浅灰蓝渐变 */
   /* 或者纯白背景： background: rgba(255, 255, 255, 0.9); */
   /* 4. 边框装饰 */
-  border: 4px solid #fff; 
-  box-shadow: 
-    0 0 0 2px #8b5cf6, /* 外层紫色细环 */
-    0 10px 20px rgba(0,0,0,0.3); /* 强投影 */
-    
+  border: 4px solid #fff;
+  box-shadow:
+    0 0 0 2px #8b5cf6,
+    /* 外层紫色细环 */
+    0 10px 20px rgba(0, 0, 0, 0.3);
+  /* 强投影 */
+
   position: absolute;
-  left: 50vw; /* 使用视口单位确保居中 */
+  left: 50vw;
+  /* 使用视口单位确保居中 */
   /* 水平居中 */
   bottom: 40px;
   /* 保持在底部 */
@@ -660,9 +780,16 @@ const endAvatarDrag = () => {
   /* background: radial-gradient(circle at 70% 30%, rgba(139, 92, 246, 0.4) 0%, transparent 100%); */
   /* border-radius: 8px; */
   cursor: grab;
-  transition: transform 0.5s ease-out; /* 平滑过渡效果 */
+  transition: transform 0.5s ease-out;
+  /* 平滑过渡效果 */
   user-select: none;
   display: inline-block;
+
+  /* 关键：增加 z-index，防止被遮挡 */
+  z-index: 200; 
+  /* 确保 transition 存在，这样坐标变化时才会“飞”过去 */
+  transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+
 }
 
 .digital-human-avatar::after {
@@ -676,13 +803,16 @@ const endAvatarDrag = () => {
 
 .digital-human-avatar.hidden {
   opacity: 0;
-  transform: scale(0.5) translateY(20px); /* 缩小并下沉消失 */
+  transform: scale(0.5) translateY(20px);
+  /* 缩小并下沉消失 */
   pointer-events: none;
 }
 
 .live2d-container {
-  width: 160px; /* 设置数字人容器的初始宽度 */
-  height: 160px; /* 设置数字人容器的初始高度 */
+  width: 160px;
+  /* 设置数字人容器的初始宽度 */
+  height: 160px;
+  /* 设置数字人容器的初始高度 */
   position: relative;
 }
 
@@ -747,7 +877,7 @@ const endAvatarDrag = () => {
   z-index: 1000;
   transition: 0.3s;
   backdrop-filter: blur(10px);
-  pointer-events: auto; 
+  pointer-events: auto;
 }
 
 .panel.hidden {
