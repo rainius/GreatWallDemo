@@ -92,11 +92,6 @@ defineProps({
   title: { type: String, default: '八达岭长城：数字导览' },
 });
 
-const XIAOER_MODEL_PATH = "./models/萧儿/萧儿 -全身.model3.json";
-// const XIAOER_AUDIO_PATH = "./models/萧儿/萧儿声音.mp3";
-const SHAOYAO_MODEL_PATH = "./models/芍药/芍药身体运动.model3.json";
-// const SHAOYAO_AUDIO_PATH = "./models/芍药/芍药声音.mp3";
-
 // 引用canvas元素
 const canvas = ref(null);
 const live2dContainer = ref(null);
@@ -198,32 +193,38 @@ const toggleGuide = () => {
   }
 };
 
-const loadModel = async (model_path) => {
+const XIAOER_MODEL_PATH = "./models/萧儿/萧儿 -全身.model3.json";
+const XIAOER_MODEL_SCALE = 0.09;
+const XIAOER_MODEL_X = -28;
+const XIAOER_MODEL_Y = -40;
+
+// const XIAOER_AUDIO_PATH = "./models/萧儿/萧儿声音.mp3";
+const SHAOYAO_MODEL_PATH = "./models/芍药/芍药身体运动.model3.json";
+const SHAOYAO_MODEL_SCALE = 0.11;
+const SHAOYAO_MODEL_X = -25;
+const SHAOYAO_MODEL_Y = -10;
+// const SHAOYAO_AUDIO_PATH = "./models/芍药/芍药声音.mp3";
+
+const loadModel = async (model_path, model_scale = 0.5, x = 0, y = 0) => {
   try {
     const modelPath = model_path;
     const loadedModel2 = await live2d.Live2DModel.from(modelPath, { autoInteract: true });
 
     // loadedModel2.pivot.set(0.5, 1); // 锚点设为底部中心
-    loadedModel2.position.x = 0
-    loadedModel2.position.y = 0
+    loadedModel2.position.x = x
+    loadedModel2.position.y = y
 
     
     // motionSync = new MotionSync(loadedModel2.internalModel);
     // motionSync.loadMotionSyncFromUrl("./models/蓝风铃/铃兰分层.motionsync3.json");
 
     // 设置模型大小和位置...
-    const containerWidth = live2dContainer.value.clientWidth;
-    // const containerHeight = live2dContainer.value.clientHeight;
-    // const scale = Math.min(
-    //   containerWidth / loadedModel2.width,
-    //   containerHeight / loadedModel2.height
-    // );
-    // 以容器高度为基准，计算缩放比例
-    // const scale = containerHeight / loadedModel2.height;
-    const scale = containerWidth / loadedModel2.width;
+    // const containerWidth = live2dContainer.value.clientWidth;
 
-    console.log("缩放比例", scale);
-    loadedModel2.scale.set(scale);
+    // const scale = containerWidth / loadedModel2.width;
+
+    console.log("缩放比例", model_scale);
+    loadedModel2.scale.set(model_scale);
     model = loadedModel2;
     // 设置点击事件
     loadedModel2.on("hit", (hitAreas) => {
@@ -253,7 +254,10 @@ const switchModel = async (modelName) => {
     }
 
     const modelPath = modelName === '萧儿' ? XIAOER_MODEL_PATH : SHAOYAO_MODEL_PATH;
-    loadModel(modelPath);
+    const modelScale = modelName === '萧儿' ? XIAOER_MODEL_SCALE : SHAOYAO_MODEL_SCALE;
+    const x = modelName === '萧儿' ? XIAOER_MODEL_X : SHAOYAO_MODEL_X;
+    const y = modelName === '萧儿' ? XIAOER_MODEL_Y : SHAOYAO_MODEL_Y;
+    loadModel(modelPath, modelScale, x, y);
   } catch (error) {
     console.error("切换模型失败:", error);
   }
@@ -308,7 +312,7 @@ onMounted(() => {
     console.error(error);
   }
 
-  setTimeout(loadModel, 3000, XIAOER_MODEL_PATH); // 500毫秒延迟
+  setTimeout(loadModel, 3000, XIAOER_MODEL_PATH, XIAOER_MODEL_SCALE, XIAOER_MODEL_X, XIAOER_MODEL_Y); // 500毫秒延迟
 });
 
 
@@ -632,16 +636,31 @@ const endAvatarDrag = () => {
 
 .digital-human-avatar {
 
+  /* 1. 尺寸改为正方形，稍微小一点 */
+  width: 160px; 
+  height: 160px; 
+  /* 2. 圆形裁剪 */
+  border-radius: 50%; 
+  overflow: hidden; /* 关键：超出圆形的部分会被切掉 */
+  /* 3. 干净的背景 */
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); /* 柔和的浅灰蓝渐变 */
+  /* 或者纯白背景： background: rgba(255, 255, 255, 0.9); */
+  /* 4. 边框装饰 */
+  border: 4px solid #fff; 
+  box-shadow: 
+    0 0 0 2px #8b5cf6, /* 外层紫色细环 */
+    0 10px 20px rgba(0,0,0,0.3); /* 强投影 */
+    
   position: absolute;
   left: 50vw; /* 使用视口单位确保居中 */
   /* 水平居中 */
-  bottom: 20px;
+  bottom: 40px;
   /* 保持在底部 */
   transform: translateX(-50%);
-  background: radial-gradient(circle at 70% 30%, rgba(139, 92, 246, 0.4) 0%, transparent 100%);
-  border-radius: 8px;
+  /* background: radial-gradient(circle at 70% 30%, rgba(139, 92, 246, 0.4) 0%, transparent 100%); */
+  /* border-radius: 8px; */
   cursor: grab;
-  transition: transform 0.1s ease-out; /* 平滑过渡效果 */
+  transition: transform 0.5s ease-out; /* 平滑过渡效果 */
   user-select: none;
   display: inline-block;
 }
@@ -657,13 +676,13 @@ const endAvatarDrag = () => {
 
 .digital-human-avatar.hidden {
   opacity: 0;
-  transform: translateY(20px);
+  transform: scale(0.5) translateY(20px); /* 缩小并下沉消失 */
   pointer-events: none;
 }
 
 .live2d-container {
-  width: 400px; /* 设置数字人容器的初始宽度 */
-  height: 600px; /* 设置数字人容器的初始高度 */
+  width: 160px; /* 设置数字人容器的初始宽度 */
+  height: 160px; /* 设置数字人容器的初始高度 */
   position: relative;
 }
 
