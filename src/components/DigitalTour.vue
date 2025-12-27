@@ -67,8 +67,7 @@
 
         <div class="digital-human-avatar" :class="{ 'hidden': !isGuideActive }" :style="avatarStyle"
           @mousedown="startAvatarDrag" @touchstart="startAvatarDrag" @mousemove="onAvatarDrag" @touchmove="onAvatarDrag"
-          @mouseup="endAvatarDrag" @touchend="endAvatarDrag" @mouseleave="endAvatarDrag" ref="avatarRef"
-          >
+          @mouseup="endAvatarDrag" @touchend="endAvatarDrag" @mouseleave="endAvatarDrag" ref="avatarRef">
           <div class="live2d-container" ref="live2dContainer">
             <canvas ref="canvas" id="live2d-canvas"></canvas>
           </div>
@@ -97,6 +96,7 @@ const canvas = ref(null);
 const live2dContainer = ref(null);
 // 保存model引用以便在组件中使用
 let model = null;
+let modelName = null;
 // let motionSync = null;
 let app1 = null;
 // 定义全局变量
@@ -194,12 +194,16 @@ const toggleGuide = () => {
 };
 
 const XIAOER_MODEL_PATH = "./models/萧儿/萧儿 -全身.model3.json";
+const XIAOER_AUDIO_BBL = "./beibalou_boy.wav"
+const XIAOER_AUDIO_HHP = "./haohanpo_boy.wav"
 const XIAOER_MODEL_SCALE = 0.09;
 const XIAOER_MODEL_X = -28;
 const XIAOER_MODEL_Y = -40;
 
 // const XIAOER_AUDIO_PATH = "./models/萧儿/萧儿声音.mp3";
 const SHAOYAO_MODEL_PATH = "./models/芍药/芍药身体运动.model3.json";
+const SHAOYAO_AUDIO_BBL = "./beibalou.mp3"
+const SHAOYAO_AUDIO_HHP = "./haohanpo.mp3"
 const SHAOYAO_MODEL_SCALE = 0.11;
 const SHAOYAO_MODEL_X = -25;
 const SHAOYAO_MODEL_Y = -10;
@@ -236,8 +240,15 @@ const loadModel = async (model_path, model_scale = 0.5, x = 0, y = 0) => {
   }
 };
 
-const switchModel = async (modelName) => {
+const switchModel = async (name) => {
   console.log(`切换到数字人: ${modelName}`);
+  modelName = name;
+
+  const modelPath = modelName === '萧儿' ? XIAOER_MODEL_PATH : SHAOYAO_MODEL_PATH;
+  const modelScale = modelName === '萧儿' ? XIAOER_MODEL_SCALE : SHAOYAO_MODEL_SCALE;
+  const x = modelName === '萧儿' ? XIAOER_MODEL_X : SHAOYAO_MODEL_X;
+  const y = modelName === '萧儿' ? XIAOER_MODEL_Y : SHAOYAO_MODEL_Y;
+
   isPanelOpen.value = false;
   isGuideActive.value = true; // 切换模型时自动显示数字人
   // 这里可以添加切换数字人的逻辑
@@ -247,11 +258,6 @@ const switchModel = async (modelName) => {
       app1.stage.removeChild(model);
       model.destroy();
     }
-
-    const modelPath = modelName === '萧儿' ? XIAOER_MODEL_PATH : SHAOYAO_MODEL_PATH;
-    const modelScale = modelName === '萧儿' ? XIAOER_MODEL_SCALE : SHAOYAO_MODEL_SCALE;
-    const x = modelName === '萧儿' ? XIAOER_MODEL_X : SHAOYAO_MODEL_X;
-    const y = modelName === '萧儿' ? XIAOER_MODEL_Y : SHAOYAO_MODEL_Y;
     loadModel(modelPath, modelScale, x, y);
   } catch (error) {
     console.error("切换模型失败:", error);
@@ -274,7 +280,7 @@ const avatarStyle = reactive({
   touchAction: 'none', // 关键：防止手机端拖拽时触发页面滚动
   // 【新增】强制重置可能导致跳变的属性
   margin: '0px',
-  transform: 'none' 
+  transform: 'none'
 });
 
 const isDocked = ref(true); // 标记是否在默认位置
@@ -294,11 +300,11 @@ const handlePoiClick = async (name, event) => {
   const rect = targetEl.getBoundingClientRect();
   const realAvatarWidth = avatarRef.value?.offsetWidth || 200;
   const realAvatarHeight = avatarRef.value?.offsetHeight || 220;
-  
+
   const poiCenterX = rect.left + rect.width / 2;
   const poiCenterY = rect.top + rect.height / 2;
   const viewportW = window.innerWidth;
-  const safeRadius = 70; 
+  const safeRadius = 70;
 
   let targetX, targetY;
 
@@ -320,9 +326,9 @@ const handlePoiClick = async (name, event) => {
   if (targetY + realAvatarHeight > window.innerHeight - padding) targetY = window.innerHeight - realAvatarHeight - padding;
 
   // --- 步骤 B: 处理动画核心逻辑 ---
-  
+
   const avatarEl = avatarRef.value;
-  
+
   // 判断是否是第一次移动（或者当前处于右下角停靠状态）
   // 只要 left/top 是 auto，说明它还在靠 CSS 布局，没有绝对坐标
   const isFirstMove = (avatarStyle.left === 'auto' || avatarStyle.top === 'auto');
@@ -352,7 +358,7 @@ const handlePoiClick = async (name, event) => {
       // 设置新的目标位置
       avatarStyle.left = `${targetX}px`;
       avatarStyle.top = `${targetY}px`;
-      
+
       isDocked.value = false;
     }, 20);
 
@@ -369,10 +375,10 @@ const handlePoiClick = async (name, event) => {
   let spk = "";
   if (name === '北八楼') {
     currentText.value = "这是<b>北八楼</b>...";
-    spk = "./beibalou.mp3";
+    spk = modelName === '萧儿' ? XIAOER_AUDIO_BBL : SHAOYAO_AUDIO_BBL;
   } else if (name === '好汉坡') {
     currentText.value = "不到长城非好汉！...";
-    spk = "./haohanpo.mp3";
+    spk = modelName === '萧儿' ? XIAOER_AUDIO_HHP : SHAOYAO_AUDIO_HHP;
   }
   playTestAudio(spk);
 };
@@ -383,25 +389,25 @@ const handlePoiClick = async (name, event) => {
 // eslint-disable-next-line
 const resetAvatarPosition = () => {
   if (isDocked.value) return;
-  
+
   isDocked.value = true;
   // 先把当前位置定死，防止样式切换时的瞬移（可选优化）
-  
+
   // 切换回 Right/Bottom 定位
   // 注意：CSS transition 会处理从 left/top 到 right/bottom 的插值吗？
   // 通常浏览器处理 left/right 混合过渡效果不好。
   // 建议：始终使用 left/top 定位，或者计算出右下角的 left/top 坐标。
-  
+
   // 简单方案：直接切回 class 控制，或者如下：
   avatarStyle.left = window.innerWidth - 180 - 20 + 'px'; // 屏幕宽 - 头像宽 - margin
   avatarStyle.top = window.innerHeight - 180 - 20 + 'px'; // 屏幕高 - 头像高 - margin
-  
+
   // 稍微延迟后清空 style，恢复响应式布局（可选）
   setTimeout(() => {
-     avatarStyle.left = 'auto';
-     avatarStyle.top = 'auto';
-     avatarStyle.right = '20px';
-     avatarStyle.bottom = '20px';
+    avatarStyle.left = 'auto';
+    avatarStyle.top = 'auto';
+    avatarStyle.right = '20px';
+    avatarStyle.bottom = '20px';
   }, 800); // 等动画播完
 };
 
@@ -437,6 +443,7 @@ onMounted(() => {
     console.error(error);
   }
 
+  modelName = "萧儿";
   setTimeout(loadModel, 3000, XIAOER_MODEL_PATH, XIAOER_MODEL_SCALE, XIAOER_MODEL_X, XIAOER_MODEL_Y); // 500毫秒延迟
 });
 
@@ -536,7 +543,7 @@ const startAvatarDrag = (e) => {
   avatarStyle.bottom = 'auto';
   avatarStyle.right = 'auto';
 
-  
+
   // 5. 绑定全局事件
   window.addEventListener('mousemove', onAvatarDrag);
   window.addEventListener('touchmove', onAvatarDrag, { passive: false });
@@ -547,7 +554,7 @@ const startAvatarDrag = (e) => {
 const onAvatarDrag = (e) => {
   if (!isDraggingAvatar.value) return;
   // 阻止手机端默认滚动行为
-  if(e.cancelable) e.preventDefault();
+  if (e.cancelable) e.preventDefault();
 
   const clientX = e.clientX || e.touches?.[0].clientX;
   const clientY = e.clientY || e.touches?.[0].clientY;
@@ -860,7 +867,7 @@ const endAvatarDrag = () => {
   display: inline-block;
 
   /* 关键：增加 z-index，防止被遮挡 */
-  z-index: 200; 
+  z-index: 200;
   /* 确保 transition 存在，这样坐标变化时才会“飞”过去 */
   transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
 
