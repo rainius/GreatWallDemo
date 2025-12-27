@@ -218,11 +218,6 @@ const loadModel = async (model_path, model_scale = 0.5, x = 0, y = 0) => {
     // motionSync = new MotionSync(loadedModel2.internalModel);
     // motionSync.loadMotionSyncFromUrl("./models/蓝风铃/铃兰分层.motionsync3.json");
 
-    // 设置模型大小和位置...
-    // const containerWidth = live2dContainer.value.clientWidth;
-
-    // const scale = containerWidth / loadedModel2.width;
-
     console.log("缩放比例", model_scale);
     loadedModel2.scale.set(model_scale);
     model = loadedModel2;
@@ -269,101 +264,117 @@ const switchModel = async (modelName) => {
 const avatarStyle = reactive({
   position: 'fixed', // 必须是 fixed，这样才能统一坐标系
   bottom: '20px',    // 默认停靠在右下角
-  right: '20px',
+  right: '180px',
   left: 'auto',      // 清除 left
   top: 'auto',       // 清除 top
   transition: 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)', // 添加平滑飞行效果
-  zIndex: 200        // 保证在最上层
+  zIndex: 200,       // 保证在最上层
+  // 确保鼠标手势正确
+  cursor: 'grab',
+  touchAction: 'none', // 关键：防止手机端拖拽时触发页面滚动
+  // 【新增】强制重置可能导致跳变的属性
+  margin: '0px',
+  transform: 'none' 
 });
 
 const isDocked = ref(true); // 标记是否在默认位置
 // const avatarRef = ref(null);
 const handlePoiClick = async (name, event) => {
-  if (isDragging.value) return; // 防止拖拽误触
+  if (isDragging.value) return;
 
-  // 1. 激活导览
-  // 1. 激活显示 (如果之前是隐藏的，需要先显示才能获取宽度)
+  // 1. 确保显示
   if (!isGuideActive.value) {
     isGuideActive.value = true;
-    await nextTick(); // 等待 DOM 渲染出 display:block
+    await nextTick();
   }
-
   isPanelOpen.value = false;
 
-  // 2. 获取点击目标的屏幕坐标
-  // event.currentTarget 确保拿到的是 .poi-marker 元素，而不是里面的图标
+  // --- 步骤 A: 计算目标坐标 (纯数学计算，不操作DOM) ---
   const targetEl = event.currentTarget;
   const rect = targetEl.getBoundingClientRect();
-
-  // rect.top / rect.left 就是该元素相对于屏幕左上角的像素位置
-  console.log('POI屏幕坐标:', rect.top, rect.left);
-
-  // 3. 计算数字人应该飞去的目标位置
-  // --- 关键修正 1: 获取数字人容器的【真实渲染宽度】 ---
-  // 如果获取失败，回退到 200 (比 CSS 里的 180 大一点，宁宽勿窄)
   const realAvatarWidth = avatarRef.value?.offsetWidth || 200;
   const realAvatarHeight = avatarRef.value?.offsetHeight || 220;
-
-  console.log(`数字人真实尺寸: ${realAvatarWidth}x${realAvatarHeight}`);
-
-  // --- 关键修正 2: 坐标计算逻辑 ---
+  
   const poiCenterX = rect.left + rect.width / 2;
   const poiCenterY = rect.top + rect.height / 2;
   const viewportW = window.innerWidth;
-  
-  // 安全半径：增加一点，设为 70px
   const safeRadius = 70; 
 
   let targetX, targetY;
 
-  // X 轴计算
+  // X轴计算
   if (poiCenterX < viewportW / 2) {
-    // POI 在左半屏 -> 数字人去右边
-    // 目标 Left = POI中心 + 半径
-    targetX = poiCenterX + safeRadius + realAvatarWidth;
+    targetX = poiCenterX + safeRadius;
   } else {
-    // POI 在右半屏 -> 数字人去左边
-    // 目标 Left = POI中心 - 半径 - 数字人真实宽度
     targetX = poiCenterX - safeRadius - realAvatarWidth;
   }
-
-  // Y 轴计算 (垂直居中)
+  // Y轴计算
   targetY = poiCenterY - (realAvatarHeight / 2);
 
-  // 边界保护
+  // 边界检查
   const padding = 20;
   const topHeaderHeight = 80;
-  
-  // 防止飞出左/右边界
   if (targetX < padding) targetX = padding;
   if (targetX + realAvatarWidth > viewportW - padding) targetX = viewportW - realAvatarWidth - padding;
-
-  // 防止飞出上/下边界
   if (targetY < topHeaderHeight) targetY = topHeaderHeight;
   if (targetY + realAvatarHeight > window.innerHeight - padding) targetY = window.innerHeight - realAvatarHeight - padding;
 
-  // --- 关键修正 3: 状态重置与应用 ---
-  isDocked.value = false;
-
-  // 先清除 bottom/right，确保 top/left 优先级最高
-  // 注意：不需要 await nextTick，直接赋值即可，Vue 会合并更新
-  avatarStyle.bottom = 'auto';
-  avatarStyle.right = 'auto';
+  // --- 步骤 B: 处理动画核心逻辑 ---
   
-  // 直接应用计算出的绝对坐标
-  avatarStyle.left = `${targetX}px`;
-  avatarStyle.top = `${targetY}px`;
+  const avatarEl = avatarRef.value;
+  
+  // 判断是否是第一次移动（或者当前处于右下角停靠状态）
+  // 只要 left/top 是 auto，说明它还在靠 CSS 布局，没有绝对坐标
+  const isFirstMove = (avatarStyle.left === 'auto' || avatarStyle.top === 'auto');
+
+  if (isFirstMove && avatarEl) {
+    // 1. 获取当前停靠在右下角时的真实像素位置
+    const startRect = avatarEl.getBoundingClientRect();
+
+    // 2. 【关键】临时关闭动画！防止从 auto 变 px 时发生奇怪的漂移
+    avatarStyle.transition = 'none';
+
+    // 3. 立即把坐标锁定在当前位置 (把 auto 变成具体的 px)
+    avatarStyle.left = `${startRect.left}px`;
+    avatarStyle.top = `${startRect.top}px`;
+    avatarStyle.bottom = 'auto';
+    avatarStyle.right = 'auto';
+
+    // 4. 强制浏览器渲染这一帧 (Reflow)
+    // 这一步让浏览器确认：“哦，原来我现在是在 left: 1000px 的位置”
+    void avatarEl.offsetWidth;
+
+    // 5. 使用 setTimeout 延迟一小会儿再设置终点
+    // 20ms 足够让浏览器喘口气，准备好下一帧动画
+    setTimeout(() => {
+      // 开启平滑动画
+      avatarStyle.transition = 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)';
+      // 设置新的目标位置
+      avatarStyle.left = `${targetX}px`;
+      avatarStyle.top = `${targetY}px`;
+      
+      isDocked.value = false;
+    }, 20);
+
+  } else {
+    // 如果不是第一次移动（已经在漂浮状态了），直接飞过去即可
+    // 确保动画是开启的
+    avatarStyle.transition = 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)';
+    avatarStyle.left = `${targetX}px`;
+    avatarStyle.top = `${targetY}px`;
+    isDocked.value = false;
+  }
 
   // 5. 播放讲解逻辑 (保持不变)
-  // let spk = "";
-  // if (name === '北八楼') {
-  //   currentText.value = "这是<b>北八楼</b>...";
-  //   spk = "./beibalou.mp3";
-  // } else if (name === '好汉坡') {
-  //   currentText.value = "不到长城非好汉！...";
-  //   spk = "./haohanpo.mp3";
-  // }
-  // playTestAudio(spk);
+  let spk = "";
+  if (name === '北八楼') {
+    currentText.value = "这是<b>北八楼</b>...";
+    spk = "./beibalou.mp3";
+  } else if (name === '好汉坡') {
+    currentText.value = "不到长城非好汉！...";
+    spk = "./haohanpo.mp3";
+  }
+  playTestAudio(spk);
 };
 
 
@@ -489,26 +500,89 @@ const initPositionTopRight = () => {
 // 数字人容器的拖拽逻辑
 const avatarRef = ref(null);
 const isDraggingAvatar = ref(false);
-const avatarStartPos = { x: 0, y: 0 };
-const avatarCurrentPos = reactive({ x: 0, y: 0 });
+const avatarDragOffset = { x: 0, y: 0 };
+// const avatarStartPos = { x: 0, y: 0 };
+// const avatarCurrentPos = reactive({ x: 0, y: 0 });
 
 const startAvatarDrag = (e) => {
+  // 1. 阻止冒泡，防止背景地图跟着动
+  e.stopPropagation();
+  // e.preventDefault(); // 可选：如果发现内部点击失效，请注释掉这一行
+
+  const avatarEl = avatarRef.value;
+  if (!avatarEl) return;
+  // 3. 【核心修复】坐标系锁定
+  // 获取当前元素在屏幕上的绝对位置
+  const rect = avatarEl.getBoundingClientRect();
+  // 4. 计算鼠标相对于元素左上角的偏移
+  const clientX = e.clientX || e.touches?.[0].clientX;
+  const clientY = e.clientY || e.touches?.[0].clientY;
+  avatarDragOffset.x = clientX - rect.left;
+  avatarDragOffset.y = clientY - rect.top;
+
   isDraggingAvatar.value = true;
-  const coords = getClientCoords(e);
-  avatarStartPos.x = coords.x - avatarCurrentPos.x;
-  avatarStartPos.y = coords.y - avatarCurrentPos.y;
+  isDocked.value = false;
+  // 2. 【核心修复】强制关闭动画！解决“拖拽滞后”问题
+  avatarStyle.transition = 'none';
+  avatarStyle.cursor = 'grabbing';
+  // 【关键】强制清除 margin 和 transform，防止坐标计算偏差
+  // 如果 CSS 里有 margin，这里设为 0 后，位置由 left/top 全权接管，不会跳变
+  avatarStyle.margin = '0px';
+  avatarStyle.transform = 'none';
+  // 立即把 bottom/right 模式转换为 left/top 模式
+  // 这样无论之前是停靠还是飞行状态，现在都统一了
+  avatarStyle.left = `${rect.left}px`;
+  avatarStyle.top = `${rect.top}px`;
+  avatarStyle.bottom = 'auto';
+  avatarStyle.right = 'auto';
+
+  
+  // 5. 绑定全局事件
+  window.addEventListener('mousemove', onAvatarDrag);
+  window.addEventListener('touchmove', onAvatarDrag, { passive: false });
+  window.addEventListener('mouseup', endAvatarDrag);
+  window.addEventListener('touchend', endAvatarDrag);
 };
 
 const onAvatarDrag = (e) => {
   if (!isDraggingAvatar.value) return;
-  e.preventDefault();
-  const coords = getClientCoords(e);
-  avatarCurrentPos.x = coords.x - avatarStartPos.x;
-  avatarCurrentPos.y = coords.y - avatarStartPos.y;
+  // 阻止手机端默认滚动行为
+  if(e.cancelable) e.preventDefault();
+
+  const clientX = e.clientX || e.touches?.[0].clientX;
+  const clientY = e.clientY || e.touches?.[0].clientY;
+
+  let newX = clientX - avatarDragOffset.x;
+  let newY = clientY - avatarDragOffset.y;
+
+  // 边界检查
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+  const elW = avatarRef.value?.offsetWidth || 200;
+  const elH = avatarRef.value?.offsetHeight || 220;
+
+  if (newX < 0) newX = 0;
+  if (newX > viewportW - elW) newX = viewportW - elW;
+  if (newY < 0) newY = 0;
+  if (newY > viewportH - elH) newY = viewportH - elH;
+
+  avatarStyle.left = `${newX}px`;
+  avatarStyle.top = `${newY}px`;
 };
 
 const endAvatarDrag = () => {
   isDraggingAvatar.value = false;
+  avatarStyle.cursor = 'grab';
+
+  // 【重要】拖拽结束后，不要恢复 transition！
+  // 只有在点击 POI 飞行时才需要 transition。
+  // 拖拽松手就是松手，不需要缓动。
+  avatarStyle.transition = 'none';
+
+  window.removeEventListener('mousemove', onAvatarDrag);
+  window.removeEventListener('touchmove', onAvatarDrag);
+  window.removeEventListener('mouseup', endAvatarDrag);
+  window.removeEventListener('touchend', endAvatarDrag);
 };
 
 </script>
