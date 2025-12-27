@@ -65,7 +65,10 @@
           </button>
         </div>
 
-        <div class="digital-human-avatar" :class="{ 'hidden': !isGuideActive }">
+        <div class="digital-human-avatar" :class="{ 'hidden': !isGuideActive }"
+          :style="{ transform: `translate(${avatarCurrentPos.x}px, ${avatarCurrentPos.y}px)` }"
+          @mousedown="startAvatarDrag" @touchstart="startAvatarDrag" @mousemove="onAvatarDrag" @touchmove="onAvatarDrag"
+          @mouseup="endAvatarDrag" @touchend="endAvatarDrag" @mouseleave="endAvatarDrag" ref="avatarRef">
           <div class="live2d-container" ref="live2dContainer">
             <canvas ref="canvas" id="live2d-canvas"></canvas>
           </div>
@@ -197,35 +200,44 @@ const toggleGuide = () => {
 
 const loadModel = async (model_path) => {
   try {
-      const modelPath = model_path;
-      const loadedModel2 = await live2d.Live2DModel.from(modelPath, { autoInteract: true });
-      loadedModel2.position.x = 0
-      loadedModel2.position.y = 0
-      // motionSync = new MotionSync(loadedModel2.internalModel);
-      // motionSync.loadMotionSyncFromUrl("./models/蓝风铃/铃兰分层.motionsync3.json");
+    const modelPath = model_path;
+    const loadedModel2 = await live2d.Live2DModel.from(modelPath, { autoInteract: true });
 
-      // 设置模型大小和位置...
-      const containerWidth = live2dContainer.value.clientWidth;
-      const containerHeight = live2dContainer.value.clientHeight;
-      const scale = Math.min(
-        containerWidth / loadedModel2.width,
-        containerHeight / loadedModel2.height
-      );
-      loadedModel2.scale.set(scale);
-      model = loadedModel2;
-      // 设置点击事件
-      loadedModel2.on("hit", (hitAreas) => {
-        if (hitAreas.includes("Body")) {
-          loadedModel2.motion("Tap");
-        }
-        if (hitAreas.includes("Head")) {
-          loadedModel2.expression();
-        }
-      });
-      app1.stage.addChild(loadedModel2);
-    } catch (error) {
-      console.error(error);
-    }
+    // loadedModel2.pivot.set(0.5, 1); // 锚点设为底部中心
+    loadedModel2.position.x = 0
+    loadedModel2.position.y = 0
+
+    
+    // motionSync = new MotionSync(loadedModel2.internalModel);
+    // motionSync.loadMotionSyncFromUrl("./models/蓝风铃/铃兰分层.motionsync3.json");
+
+    // 设置模型大小和位置...
+    const containerWidth = live2dContainer.value.clientWidth;
+    // const containerHeight = live2dContainer.value.clientHeight;
+    // const scale = Math.min(
+    //   containerWidth / loadedModel2.width,
+    //   containerHeight / loadedModel2.height
+    // );
+    // 以容器高度为基准，计算缩放比例
+    // const scale = containerHeight / loadedModel2.height;
+    const scale = containerWidth / loadedModel2.width;
+
+    console.log("缩放比例", scale);
+    loadedModel2.scale.set(scale);
+    model = loadedModel2;
+    // 设置点击事件
+    loadedModel2.on("hit", (hitAreas) => {
+      if (hitAreas.includes("Body")) {
+        loadedModel2.motion("Tap");
+      }
+      if (hitAreas.includes("Head")) {
+        loadedModel2.expression();
+      }
+    });
+    app1.stage.addChild(loadedModel2);
+  } catch (error) {
+    console.error(error);
+  }
 };
 
 const switchModel = async (modelName) => {
@@ -242,34 +254,6 @@ const switchModel = async (modelName) => {
 
     const modelPath = modelName === '萧儿' ? XIAOER_MODEL_PATH : SHAOYAO_MODEL_PATH;
     loadModel(modelPath);
-    // 加载新模型
-    // const modelPath = modelName === '萧儿' ? XIAOER_MODEL_PATH : SHAOYAO_MODEL_PATH;
-    // const loadedModel = await live2d.Live2DModel.from(modelPath, { autoInteract: false });
-    // loadedModel.position.x = 0;
-    // loadedModel.position.y = 0;
-
-    // // 设置模型大小和位置
-    // const containerWidth = live2dContainer.value.clientWidth;
-    // const containerHeight = live2dContainer.value.clientHeight;
-    // const scale = Math.min(
-    //   containerWidth / loadedModel.width,
-    //   containerHeight / loadedModel.height
-    // );
-    // loadedModel.scale.set(scale);
-
-    // // 设置点击事件
-    // loadedModel.on("hit", (hitAreas) => {
-    //   if (hitAreas.includes("Body")) {
-    //     loadedModel.motion("Tap");
-    //   }
-    //   if (hitAreas.includes("Head")) {
-    //     loadedModel.expression();
-    //   }
-    // });
-
-    // // 添加到舞台
-    // app1.stage.addChild(loadedModel);
-    // model = loadedModel;
   } catch (error) {
     console.error("切换模型失败:", error);
   }
@@ -381,6 +365,33 @@ const initPositionTopRight = () => {
     lastPos.y = position.y;
   }, 100); // 100ms 延迟比较稳妥
 };
+
+
+// 数字人容器的拖拽逻辑
+const avatarRef = ref(null);
+const isDraggingAvatar = ref(false);
+const avatarStartPos = { x: 0, y: 0 };
+const avatarCurrentPos = reactive({ x: 0, y: 0 });
+
+const startAvatarDrag = (e) => {
+  isDraggingAvatar.value = true;
+  const coords = getClientCoords(e);
+  avatarStartPos.x = coords.x - avatarCurrentPos.x;
+  avatarStartPos.y = coords.y - avatarCurrentPos.y;
+};
+
+const onAvatarDrag = (e) => {
+  if (!isDraggingAvatar.value) return;
+  e.preventDefault();
+  const coords = getClientCoords(e);
+  avatarCurrentPos.x = coords.x - avatarStartPos.x;
+  avatarCurrentPos.y = coords.y - avatarStartPos.y;
+};
+
+const endAvatarDrag = () => {
+  isDraggingAvatar.value = false;
+};
+
 </script>
 
 <style scoped>
@@ -506,7 +517,6 @@ const initPositionTopRight = () => {
 /* 让 UI 层里的按钮和交互元素恢复点击 */
 .header-bar,
 .guide-area,
-.toggle-switch,
 .back-btn {
   pointer-events: auto;
 }
@@ -598,22 +608,42 @@ const initPositionTopRight = () => {
 
 /* 数字人区域 (与之前相同) */
 .guide-area {
-  position: absolute;
-  right: 40px;
-  bottom: 20px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  /* 允许点击穿透到背景层 */
   display: flex;
   flex-direction: row-reverse;
   align-items: flex-end;
   gap: 10px;
+  z-index: 100;
+  /* 确保 UI 层在背景层之上 */
+}
+
+/* 恢复内部交互元素的点击事件 */
+
+.toggle-switch,
+.digital-human-avatar {
+  pointer-events: auto;
 }
 
 .digital-human-avatar {
-  width: 240px;
-  height: 330px;
-  background: radial-gradient(circle at 70% 30%, rgba(139, 92, 246, 0.4) 0%, transparent 60%);
+
+  position: absolute;
+  left: 50vw; /* 使用视口单位确保居中 */
+  /* 水平居中 */
+  bottom: 20px;
+  /* 保持在底部 */
+  transform: translateX(-50%);
+  background: radial-gradient(circle at 70% 30%, rgba(139, 92, 246, 0.4) 0%, transparent 100%);
   border-radius: 8px;
-  position: relative;
-  transition: 0.5s;
+  cursor: grab;
+  transition: transform 0.1s ease-out; /* 平滑过渡效果 */
+  user-select: none;
+  display: inline-block;
 }
 
 .digital-human-avatar::after {
@@ -629,6 +659,12 @@ const initPositionTopRight = () => {
   opacity: 0;
   transform: translateY(20px);
   pointer-events: none;
+}
+
+.live2d-container {
+  width: 400px; /* 设置数字人容器的初始宽度 */
+  height: 600px; /* 设置数字人容器的初始高度 */
+  position: relative;
 }
 
 .speech-bubble {
@@ -650,11 +686,15 @@ const initPositionTopRight = () => {
 }
 
 .toggle-switch {
+  right: 40px;
+  /* 距离右侧 20px */
+  bottom: 20px;
+  /* 距离底部 20px */
   width: 50px;
   height: 50px;
   background: #444;
   border-radius: 50%;
-  position: relative;
+  position: absolute;
   cursor: pointer;
   margin-bottom: 10px;
   transition: 0.3s;
@@ -662,6 +702,7 @@ const initPositionTopRight = () => {
   justify-content: center;
   align-items: center;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
 }
 
 .toggle-switch.active {
@@ -676,17 +717,18 @@ const initPositionTopRight = () => {
 
 .panel {
   position: absolute;
-  bottom: 60px;
-  right: 0;
+  bottom: 85px;
+  right: 50px;
   background: rgba(0, 0, 0, 0.8);
   border-radius: 8px;
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 100;
+  z-index: 1000;
   transition: 0.3s;
   backdrop-filter: blur(10px);
+  pointer-events: auto; 
 }
 
 .panel.hidden {
