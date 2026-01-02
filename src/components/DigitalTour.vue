@@ -87,7 +87,11 @@ const { loadUnity, isLoaded, progress } = useUnity(canvasRef);
 const handleUnityClick = (id) => {
   console.log("Vue 收到 Unity 点击 ID:", id);
   // 这里可以写你的业务逻辑，比如打开弹窗
-  handlePoiClick(modelName);
+  let name = "北八楼";
+  if (id === "btn_B8L") {
+    name = "北八楼";
+  }
+  handlePoiClick(name);
 };
 
 // 引用canvas元素
@@ -213,102 +217,35 @@ const avatarStyle = reactive({
 const isDocked = ref(true); // 标记是否在默认位置
 // const avatarRef = ref(null);
 // eslint-disable-next-line
-const handlePoiClick = async (name, event) => {
+const handlePoiClick = (name) => {
   console.log("handlePoiClick", name);
 
-  // 1. 确保显示
-  if (!isGuideActive.value) {
-    isGuideActive.value = true;
-    await nextTick();
-  }
-  isPanelOpen.value = false;
-
-  // --- 步骤 A: 计算目标坐标 (纯数学计算，不操作DOM) ---
-  // const targetEl = event.currentTarget;
-  // const rect = targetEl.getBoundingClientRect();
-  // const realAvatarWidth = avatarRef.value?.offsetWidth || 200;
-  // const realAvatarHeight = avatarRef.value?.offsetHeight || 220;
-
-  // const poiCenterX = rect.left + rect.width / 2;
-  // const poiCenterY = rect.top + rect.height / 2;
-  // const viewportW = window.innerWidth;
-  // const safeRadius = 70;
-
-  // let targetX, targetY;
-
-  // // X轴计算
-  // if (poiCenterX < viewportW / 2) {
-  //   targetX = poiCenterX + safeRadius;
-  // } else {
-  //   targetX = poiCenterX - safeRadius - realAvatarWidth;
-  // }
-  // // Y轴计算
-  // targetY = poiCenterY - (realAvatarHeight / 2);
-
-  // // 边界检查
-  // const padding = 20;
-  // const topHeaderHeight = 80;
-  // if (targetX < padding) targetX = padding;
-  // if (targetX + realAvatarWidth > viewportW - padding) targetX = viewportW - realAvatarWidth - padding;
-  // if (targetY < topHeaderHeight) targetY = topHeaderHeight;
-  // if (targetY + realAvatarHeight > window.innerHeight - padding) targetY = window.innerHeight - realAvatarHeight - padding;
-
-  // // --- 步骤 B: 处理动画核心逻辑 ---
-
-  // const avatarEl = avatarRef.value;
-
-  // // 判断是否是第一次移动（或者当前处于右下角停靠状态）
-  // // 只要 left/top 是 auto，说明它还在靠 CSS 布局，没有绝对坐标
-  // const isFirstMove = (avatarStyle.left === 'auto' || avatarStyle.top === 'auto');
-
-  // if (isFirstMove && avatarEl) {
-  //   // 1. 获取当前停靠在右下角时的真实像素位置
-  //   const startRect = avatarEl.getBoundingClientRect();
-
-  //   // 2. 【关键】临时关闭动画！防止从 auto 变 px 时发生奇怪的漂移
-  //   avatarStyle.transition = 'none';
-
-  //   // 3. 立即把坐标锁定在当前位置 (把 auto 变成具体的 px)
-  //   avatarStyle.left = `${startRect.left}px`;
-  //   avatarStyle.top = `${startRect.top}px`;
-  //   avatarStyle.bottom = 'auto';
-  //   avatarStyle.right = 'auto';
-
-  //   // 4. 强制浏览器渲染这一帧 (Reflow)
-  //   // 这一步让浏览器确认：“哦，原来我现在是在 left: 1000px 的位置”
-  //   void avatarEl.offsetWidth;
-
-  //   // 5. 使用 setTimeout 延迟一小会儿再设置终点
-  //   // 20ms 足够让浏览器喘口气，准备好下一帧动画
-  //   setTimeout(() => {
-  //     // 开启平滑动画
-  //     avatarStyle.transition = 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)';
-  //     // 设置新的目标位置
-  //     avatarStyle.left = `${targetX}px`;
-  //     avatarStyle.top = `${targetY}px`;
-
-  //     isDocked.value = false;
-  //   }, 20);
-
-  // } else {
-  //   // 如果不是第一次移动（已经在漂浮状态了），直接飞过去即可
-  //   // 确保动画是开启的
-  //   avatarStyle.transition = 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)';
-  //   avatarStyle.left = `${targetX}px`;
-  //   avatarStyle.top = `${targetY}px`;
-  //   isDocked.value = false;
-  // }
-
-  // 5. 播放讲解逻辑 (保持不变)
+  // 1. 准备音频路径 (先做逻辑计算)
   let spk = "";
+  // 注意：这里用 currentModelName 替代 modelName，确保变量名正确
+  // 假设你有一个变量存着当前是哪个数字人
   if (name === '北八楼') {
     currentText.value = "这是<b>北八楼</b>...";
-    spk = modelName === '杜梨花' ? XIAOER_AUDIO_BBL : SHAOYAO_AUDIO_BBL;
+    spk = modelName.value === '杜梨花' ? XIAOER_AUDIO_BBL : SHAOYAO_AUDIO_BBL;
   } else if (name === '好汉坡') {
     currentText.value = "不到长城非好汉！...";
-    spk = modelName === '杜梨花' ? XIAOER_AUDIO_HHP : SHAOYAO_AUDIO_HHP;
+    spk = modelName.value === '杜梨花' ? XIAOER_AUDIO_HHP : SHAOYAO_AUDIO_HHP;
   }
+
+  // 2. 【关键】立即触发音频播放 (不要 await)
+  // 这样浏览器能明确知道这是点击事件的一部分
   playTestAudio(spk);
+
+  // 3. 处理 UI 显示 (UI更新可以慢一点，没关系)
+  if (!isGuideActive.value) {
+    isGuideActive.value = true;
+    // 如果你需要基于 DOM 尺寸做飞行动画，可以在这里用 nextTick
+    nextTick(() => {
+        // 这里放那些需要 DOM 宽高的飞行动画逻辑
+        // updateAvatarPosition(...); 
+    });
+  }
+  isPanelOpen.value = false;
 };
 
 
@@ -402,6 +339,7 @@ const isPlaying = ref(false);
 const playTestAudio = (spk) => {
   console.log("播放测试音频");
   console.log("数字人模型", model);
+  console.log("播讲内容", spk);
   // console.log(model.speak);
   if (model) {
     if (isPlaying.value) {
