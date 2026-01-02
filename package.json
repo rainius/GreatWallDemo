@@ -17,8 +17,7 @@
     "gsap": "^3.14.2",
     "live2d-motionsync": "^0.0.4",
     "pixi.js": "^8.14.3",
-    "vue": "^3.2.13",
-    "vue-unity-webgl": "^1.2.0"
+    "vue": "^3.2.13"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",

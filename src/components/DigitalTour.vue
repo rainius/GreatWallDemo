@@ -2,28 +2,17 @@
   <div class="tour-viewport">
 
     <!-- 1. 可拖拽的"世界"层 (图片 + POI) -->
-    <div class="draggable-world" :style="{ transform: `translate(${position.x}px, ${position.y}px)` }"
-      @mousedown="startDrag" @touchstart="startDrag" @mousemove="onDrag" @touchmove="onDrag" @mouseup="endDrag"
-      @mouseleave="endDrag" @touchend="endDrag" ref="worldRef">
-      <!-- 背景全景大图 -->
-      <img :src="bgImage" alt="长城全景" class="panorama-bg" draggable="false" @load="initPositionTopRight" />
+    <div class="unity-wrapper">
+      <!-- 1. 定义 Canvas -->
+      <canvas ref="canvasRef" id="unity-canvas"></canvas>
 
-      <!-- POI 点 (现在是相对于图片的绝对定位) -->
-      <!-- style 中的 top/left 使用百分比，确保永远钉在图片的特定位置 -->
-      <div class="poi-marker" style="top: 18%; left: 88%;" @click.stop="handlePoiClick('北八楼', $event)">
-        <div class="poi-icon-wrapper">
-          <i class="fa-solid fa-location-dot"></i>
-        </div>
-        <div class="poi-label">北八楼讲解点</div>
+      <!-- 2. (可选) 加载进度条 -->
+      <div v-if="!isLoaded" class="loading-overlay">
+        加载中... {{ Math.round(progress * 100) }}%
       </div>
 
-      <div class="poi-marker" style="top: 45%; left: 65%;" @click.stop="handlePoiClick('好汉坡', $event)">
-        <div class="poi-icon-wrapper">
-          <i class="fa-solid fa-location-dot"></i>
-        </div>
-        <div class="poi-label">好汉坡讲解点</div>
-      </div>
     </div>
+
 
     <!-- 2. 固定 UI 层 (不受拖拽影响) -->
     <div class="ui-layer">
@@ -79,10 +68,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue';
-
-// @ 符号在 Vue 中通常代表 src 目录
-import bgImage from '@/assets/gw.jpeg';
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { useUnity } from '@/composables/useUnity';
 
 // eslint-disable-next-line no-undef
 defineOptions({ name: 'DigitalTour' });
@@ -90,6 +77,18 @@ defineOptions({ name: 'DigitalTour' });
 defineProps({
   title: { type: String, default: '八达岭长城：数字导览' },
 });
+
+const canvasRef = ref(null);
+
+// 使用刚才封装的 hook
+const { loadUnity, isLoaded, progress } = useUnity(canvasRef);
+
+// --- 处理 Unity 点击回调 ---
+const handleUnityClick = (id) => {
+  console.log("Vue 收到 Unity 点击 ID:", id);
+  // 这里可以写你的业务逻辑，比如打开弹窗
+  handlePoiClick(modelName);
+};
 
 // 引用canvas元素
 const canvas = ref(null);
@@ -107,78 +106,6 @@ let live2d = null;
 const isGuideActive = ref(true);
 const isPanelOpen = ref(true);
 const currentText = ref('欢迎来到八达岭。这张全景图包含了长城的精华路段。您可以<b>拖动屏幕</b>来自由浏览，寻找发光的讲解点。');
-const showHint = ref(true);
-
-// --- 拖拽逻辑 ---
-const worldRef = ref(null);
-const position = reactive({ x: -200, y: -100 }); // 初始偏移量，让画面居中一点
-const isDragging = ref(false);
-const startPos = { x: 0, y: 0 };
-const lastPos = { x: 0, y: 0 };
-
-// 获取事件坐标 (兼容鼠标和触摸)
-const getClientCoords = (e) => {
-  if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  return { x: e.clientX, y: e.clientY };
-};
-
-const startDrag = (e) => {
-  isDragging.value = true;
-  showHint.value = false; // 开始拖拽后隐藏提示
-  const coords = getClientCoords(e);
-  startPos.x = coords.x;
-  startPos.y = coords.y;
-  lastPos.x = position.x;
-  lastPos.y = position.y;
-};
-
-const onDrag = (e) => {
-  if (!isDragging.value || !worldRef.value) return;
-  e.preventDefault();
-
-  const coords = getClientCoords(e);
-  const deltaX = coords.x - startPos.x;
-  const deltaY = coords.y - startPos.y;
-
-  // 1. 计算原本想移动到的位置
-  let newX = lastPos.x + deltaX;
-  let newY = lastPos.y + deltaY;
-
-  // 2. 获取当前视口和图片的尺寸
-  const viewportW = window.innerWidth;
-  const viewportH = window.innerHeight;
-  const worldW = worldRef.value.offsetWidth; // 图片(容器)的实际宽度
-  const worldH = worldRef.value.offsetHeight; // 图片(容器)的实际高度
-
-  // 3. 计算 X 轴边界
-  // 如果图片比窗口宽，才允许拖动，否则居中或固定
-  if (worldW > viewportW) {
-    const minX = viewportW - worldW; // 右边界极限 (负数)
-    const maxX = 0;                  // 左边界极限
-    // Math.max 取下限，Math.min 取上限，实现限制
-    newX = Math.min(Math.max(newX, minX), maxX);
-  } else {
-    newX = (viewportW - worldW) / 2; // 图片不够宽时强制居中
-  }
-
-  // 4. 计算 Y 轴边界
-  if (worldH > viewportH) {
-    const minY = viewportH - worldH; // 下边界极限
-    const maxY = 0;                  // 上边界极限
-    newY = Math.min(Math.max(newY, minY), maxY);
-  } else {
-    newY = (viewportH - worldH) / 2; // 图片不够高时强制居中
-  }
-
-  // 5. 应用位置
-  position.x = newX;
-  position.y = newY;
-};
-
-
-const endDrag = () => {
-  isDragging.value = false;
-};
 
 // --- 业务逻辑 ---
 const togglePanel = () => {
@@ -285,8 +212,9 @@ const avatarStyle = reactive({
 
 const isDocked = ref(true); // 标记是否在默认位置
 // const avatarRef = ref(null);
+// eslint-disable-next-line
 const handlePoiClick = async (name, event) => {
-  if (isDragging.value) return;
+  console.log("handlePoiClick", name);
 
   // 1. 确保显示
   if (!isGuideActive.value) {
@@ -296,80 +224,80 @@ const handlePoiClick = async (name, event) => {
   isPanelOpen.value = false;
 
   // --- 步骤 A: 计算目标坐标 (纯数学计算，不操作DOM) ---
-  const targetEl = event.currentTarget;
-  const rect = targetEl.getBoundingClientRect();
-  const realAvatarWidth = avatarRef.value?.offsetWidth || 200;
-  const realAvatarHeight = avatarRef.value?.offsetHeight || 220;
+  // const targetEl = event.currentTarget;
+  // const rect = targetEl.getBoundingClientRect();
+  // const realAvatarWidth = avatarRef.value?.offsetWidth || 200;
+  // const realAvatarHeight = avatarRef.value?.offsetHeight || 220;
 
-  const poiCenterX = rect.left + rect.width / 2;
-  const poiCenterY = rect.top + rect.height / 2;
-  const viewportW = window.innerWidth;
-  const safeRadius = 70;
+  // const poiCenterX = rect.left + rect.width / 2;
+  // const poiCenterY = rect.top + rect.height / 2;
+  // const viewportW = window.innerWidth;
+  // const safeRadius = 70;
 
-  let targetX, targetY;
+  // let targetX, targetY;
 
-  // X轴计算
-  if (poiCenterX < viewportW / 2) {
-    targetX = poiCenterX + safeRadius;
-  } else {
-    targetX = poiCenterX - safeRadius - realAvatarWidth;
-  }
-  // Y轴计算
-  targetY = poiCenterY - (realAvatarHeight / 2);
+  // // X轴计算
+  // if (poiCenterX < viewportW / 2) {
+  //   targetX = poiCenterX + safeRadius;
+  // } else {
+  //   targetX = poiCenterX - safeRadius - realAvatarWidth;
+  // }
+  // // Y轴计算
+  // targetY = poiCenterY - (realAvatarHeight / 2);
 
-  // 边界检查
-  const padding = 20;
-  const topHeaderHeight = 80;
-  if (targetX < padding) targetX = padding;
-  if (targetX + realAvatarWidth > viewportW - padding) targetX = viewportW - realAvatarWidth - padding;
-  if (targetY < topHeaderHeight) targetY = topHeaderHeight;
-  if (targetY + realAvatarHeight > window.innerHeight - padding) targetY = window.innerHeight - realAvatarHeight - padding;
+  // // 边界检查
+  // const padding = 20;
+  // const topHeaderHeight = 80;
+  // if (targetX < padding) targetX = padding;
+  // if (targetX + realAvatarWidth > viewportW - padding) targetX = viewportW - realAvatarWidth - padding;
+  // if (targetY < topHeaderHeight) targetY = topHeaderHeight;
+  // if (targetY + realAvatarHeight > window.innerHeight - padding) targetY = window.innerHeight - realAvatarHeight - padding;
 
-  // --- 步骤 B: 处理动画核心逻辑 ---
+  // // --- 步骤 B: 处理动画核心逻辑 ---
 
-  const avatarEl = avatarRef.value;
+  // const avatarEl = avatarRef.value;
 
-  // 判断是否是第一次移动（或者当前处于右下角停靠状态）
-  // 只要 left/top 是 auto，说明它还在靠 CSS 布局，没有绝对坐标
-  const isFirstMove = (avatarStyle.left === 'auto' || avatarStyle.top === 'auto');
+  // // 判断是否是第一次移动（或者当前处于右下角停靠状态）
+  // // 只要 left/top 是 auto，说明它还在靠 CSS 布局，没有绝对坐标
+  // const isFirstMove = (avatarStyle.left === 'auto' || avatarStyle.top === 'auto');
 
-  if (isFirstMove && avatarEl) {
-    // 1. 获取当前停靠在右下角时的真实像素位置
-    const startRect = avatarEl.getBoundingClientRect();
+  // if (isFirstMove && avatarEl) {
+  //   // 1. 获取当前停靠在右下角时的真实像素位置
+  //   const startRect = avatarEl.getBoundingClientRect();
 
-    // 2. 【关键】临时关闭动画！防止从 auto 变 px 时发生奇怪的漂移
-    avatarStyle.transition = 'none';
+  //   // 2. 【关键】临时关闭动画！防止从 auto 变 px 时发生奇怪的漂移
+  //   avatarStyle.transition = 'none';
 
-    // 3. 立即把坐标锁定在当前位置 (把 auto 变成具体的 px)
-    avatarStyle.left = `${startRect.left}px`;
-    avatarStyle.top = `${startRect.top}px`;
-    avatarStyle.bottom = 'auto';
-    avatarStyle.right = 'auto';
+  //   // 3. 立即把坐标锁定在当前位置 (把 auto 变成具体的 px)
+  //   avatarStyle.left = `${startRect.left}px`;
+  //   avatarStyle.top = `${startRect.top}px`;
+  //   avatarStyle.bottom = 'auto';
+  //   avatarStyle.right = 'auto';
 
-    // 4. 强制浏览器渲染这一帧 (Reflow)
-    // 这一步让浏览器确认：“哦，原来我现在是在 left: 1000px 的位置”
-    void avatarEl.offsetWidth;
+  //   // 4. 强制浏览器渲染这一帧 (Reflow)
+  //   // 这一步让浏览器确认：“哦，原来我现在是在 left: 1000px 的位置”
+  //   void avatarEl.offsetWidth;
 
-    // 5. 使用 setTimeout 延迟一小会儿再设置终点
-    // 20ms 足够让浏览器喘口气，准备好下一帧动画
-    setTimeout(() => {
-      // 开启平滑动画
-      avatarStyle.transition = 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)';
-      // 设置新的目标位置
-      avatarStyle.left = `${targetX}px`;
-      avatarStyle.top = `${targetY}px`;
+  //   // 5. 使用 setTimeout 延迟一小会儿再设置终点
+  //   // 20ms 足够让浏览器喘口气，准备好下一帧动画
+  //   setTimeout(() => {
+  //     // 开启平滑动画
+  //     avatarStyle.transition = 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)';
+  //     // 设置新的目标位置
+  //     avatarStyle.left = `${targetX}px`;
+  //     avatarStyle.top = `${targetY}px`;
 
-      isDocked.value = false;
-    }, 20);
+  //     isDocked.value = false;
+  //   }, 20);
 
-  } else {
-    // 如果不是第一次移动（已经在漂浮状态了），直接飞过去即可
-    // 确保动画是开启的
-    avatarStyle.transition = 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)';
-    avatarStyle.left = `${targetX}px`;
-    avatarStyle.top = `${targetY}px`;
-    isDocked.value = false;
-  }
+  // } else {
+  //   // 如果不是第一次移动（已经在漂浮状态了），直接飞过去即可
+  //   // 确保动画是开启的
+  //   avatarStyle.transition = 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)';
+  //   avatarStyle.left = `${targetX}px`;
+  //   avatarStyle.top = `${targetY}px`;
+  //   isDocked.value = false;
+  // }
 
   // 5. 播放讲解逻辑 (保持不变)
   let spk = "";
@@ -445,17 +373,36 @@ onMounted(() => {
 
   modelName = "杜梨花";
   setTimeout(loadModel, 3000, XIAOER_MODEL_PATH, XIAOER_MODEL_SCALE, XIAOER_MODEL_X, XIAOER_MODEL_Y); // 500毫秒延迟
+
+  // 1. 挂载全局函数供 Unity 调用
+  window.handleUnityTextClick = handleUnityClick;
+
+  // 2. 加载 Unity
+  // 请务必核对下面的文件名，必须与你 public/unity-build/Build/ 下的文件名完全一致！
+  loadUnity({
+    loaderUrl: "./unity-build/Build/GW.loader.js", 
+    dataUrl: "./unity-build/Build/GW.data",
+    frameworkUrl: "./unity-build/Build/GW.framework.js",
+    codeUrl: "./unity-build/Build/GW.wasm",
+  }).then(() => {
+    console.log("Unity 加载完成！");
+  }).catch((err) => {
+    console.error("Unity 加载失败:", err);
+  });
 });
 
-
+onBeforeUnmount(() => {
+  // 清理全局函数
+  window.handleUnityTextClick = null;
+});
 
 const isPlaying = ref(false);
 // 播放测试音频
 // eslint-disable-next-line
 const playTestAudio = (spk) => {
   console.log("播放测试音频");
-  console.log(model);
-  console.log(model.speak);
+  console.log("数字人模型", model);
+  // console.log(model.speak);
   if (model) {
     if (isPlaying.value) {
       // Stop the current playback
@@ -479,30 +426,6 @@ const playTestAudio = (spk) => {
     console.warn("模型未加载，无法播放音频");
   }
 };
-
-// --- 修改：初始化位置为右上角 ---
-const initPositionTopRight = () => {
-  if (!worldRef.value) return;
-
-  // 稍微延迟确保 DOM 尺寸计算完成
-  setTimeout(() => {
-    const viewportW = window.innerWidth;
-    // const viewportH = window.innerHeight; // 上对齐不需要用到屏幕高度
-    const worldW = worldRef.value.offsetWidth;
-
-    // 计算 X 轴：(屏幕宽 - 图片宽) = 图片右边缘贴合屏幕右边缘
-    // 假设屏幕1000，图片3000，结果是 -2000，即向左偏移2000，显示最右侧内容
-    position.x = viewportW - worldW;
-
-    // 计算 Y 轴：0 = 图片上边缘贴合屏幕上边缘
-    position.y = 0;
-
-    // 重要：同步更新 lastPos，防止第一次拖动时位置跳变
-    lastPos.x = position.x;
-    lastPos.y = position.y;
-  }, 100); // 100ms 延迟比较稳妥
-};
-
 
 // 数字人容器的拖拽逻辑
 const avatarRef = ref(null);
@@ -1022,5 +945,28 @@ const endAvatarDrag = () => {
     /* 缩小按钮尺寸 */
     font-size: 0.8rem;
   }
+}
+
+.unity-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  background: #000; /* Unity 加载前显示黑色背景 */
+}
+
+#unity-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 20px;
+  pointer-events: none;
 }
 </style>
