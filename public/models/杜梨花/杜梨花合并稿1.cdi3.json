@@ -1,0 +1,243 @@
+{
+	"Version": 3,
+	"Parameters": [
+		{
+			"Id": "ParamAngleX",
+			"GroupId": "",
+			"Name": "角度 X"
+		},
+		{
+			"Id": "ParamAngleY",
+			"GroupId": "",
+			"Name": "角度 Y"
+		},
+		{
+			"Id": "ParamAngleZ",
+			"GroupId": "",
+			"Name": "角度 Z"
+		},
+		{
+			"Id": "ParamEyeLOpen",
+			"GroupId": "",
+			"Name": "左眼 开闭"
+		},
+		{
+			"Id": "ParamEyeLSmile",
+			"GroupId": "",
+			"Name": "左眼 微笑"
+		},
+		{
+			"Id": "ParamEyeROpen",
+			"GroupId": "",
+			"Name": "右眼 开闭"
+		},
+		{
+			"Id": "ParamEyeRSmile",
+			"GroupId": "",
+			"Name": "右眼 微笑"
+		},
+		{
+			"Id": "ParamEyeBallX",
+			"GroupId": "",
+			"Name": "眼珠 X"
+		},
+		{
+			"Id": "ParamEyeBallY",
+			"GroupId": "",
+			"Name": "眼珠 Y"
+		},
+		{
+			"Id": "ParamBrowLY",
+			"GroupId": "",
+			"Name": "左眉 上下"
+		},
+		{
+			"Id": "ParamBrowRY",
+			"GroupId": "",
+			"Name": "右眉 上下"
+		},
+		{
+			"Id": "ParamBrowLX",
+			"GroupId": "",
+			"Name": "左眉 左右"
+		},
+		{
+			"Id": "ParamBrowRX",
+			"GroupId": "",
+			"Name": "右眉 左右"
+		},
+		{
+			"Id": "ParamBrowLAngle",
+			"GroupId": "",
+			"Name": "左眉 角度"
+		},
+		{
+			"Id": "ParamBrowRAngle",
+			"GroupId": "",
+			"Name": "右眉 角度"
+		},
+		{
+			"Id": "ParamBrowLForm",
+			"GroupId": "",
+			"Name": "左眉 変形"
+		},
+		{
+			"Id": "ParamBrowRForm",
+			"GroupId": "",
+			"Name": "右眉 変形"
+		},
+		{
+			"Id": "ParamMouthForm",
+			"GroupId": "",
+			"Name": "嘴 变形"
+		},
+		{
+			"Id": "ParamMouthOpenY",
+			"GroupId": "",
+			"Name": "嘴 开闭"
+		},
+		{
+			"Id": "ParamCheek",
+			"GroupId": "",
+			"Name": "脸颊泛红"
+		},
+		{
+			"Id": "ParamBodyAngleX",
+			"GroupId": "",
+			"Name": "身体旋转 X"
+		},
+		{
+			"Id": "ParamBodyAngleY",
+			"GroupId": "",
+			"Name": "身体旋转 Y"
+		},
+		{
+			"Id": "ParamBodyAngleZ",
+			"GroupId": "",
+			"Name": "身体旋转 Z"
+		},
+		{
+			"Id": "ParamBreath",
+			"GroupId": "",
+			"Name": "呼吸"
+		},
+		{
+			"Id": "ParamHairFront",
+			"GroupId": "",
+			"Name": "摇动 前发"
+		},
+		{
+			"Id": "ParamHairSide",
+			"GroupId": "",
+			"Name": "摇动 侧发"
+		},
+		{
+			"Id": "ParamHairBack",
+			"GroupId": "",
+			"Name": "摇动 后发"
+		}
+	],
+	"ParameterGroups": [],
+	"Parts": [
+		{
+			"Id": "face",
+			"Name": "face"
+		},
+		{
+			"Id": "head",
+			"Name": "head"
+		},
+		{
+			"Id": "Part7",
+			"Name": "x xiashen"
+		},
+		{
+			"Id": "Part",
+			"Name": "eye R"
+		},
+		{
+			"Id": "Part4",
+			"Name": "eye L"
+		},
+		{
+			"Id": "zui",
+			"Name": "zui"
+		},
+		{
+			"Id": "Part8",
+			"Name": "x you gebo"
+		},
+		{
+			"Id": "Part11",
+			"Name": "x shen shang"
+		},
+		{
+			"Id": "body2",
+			"Name": "body"
+		},
+		{
+			"Id": "Part12",
+			"Name": "x zuo gebo"
+		},
+		{
+			"Id": "Part2",
+			"Name": "you yan pi"
+		},
+		{
+			"Id": "Part3",
+			"Name": "you yan zhu"
+		},
+		{
+			"Id": "Part5",
+			"Name": "zui zhang"
+		},
+		{
+			"Id": "zui2",
+			"Name": "zui"
+		},
+		{
+			"Id": "Part9",
+			"Name": "forearm 1"
+		},
+		{
+			"Id": "Part10",
+			"Name": "forearm 2"
+		},
+		{
+			"Id": "Part13",
+			"Name": "zuo gebo1 fang"
+		},
+		{
+			"Id": "Part6",
+			"Name": "s zui zhang"
+		},
+		{
+			"Id": "Part14",
+			"Name": "zuo gebo1 fang"
+		},
+		{
+			"Id": "Part15",
+			"Name": "zuo shou fang"
+		},
+		{
+			"Id": "Part20",
+			"Name": "zuo dai fang"
+		},
+		{
+			"Id": "Part16",
+			"Name": "zuo shou zhi1"
+		},
+		{
+			"Id": "Part17",
+			"Name": "zuo shou zhi2"
+		},
+		{
+			"Id": "Part18",
+			"Name": "hua zuo"
+		},
+		{
+			"Id": "Part19",
+			"Name": "zuo shou di"
+		}
+	]
+}

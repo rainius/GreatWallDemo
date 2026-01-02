@@ -54,8 +54,8 @@
         </div>
 
         <div class="panel" :class="{ 'hidden': !isPanelOpen }">
-          <button class="panel-btn" @click="switchModel('萧儿')">
-            <i class="fa-solid fa-user"></i> 萧儿
+          <button class="panel-btn" @click="switchModel('杜梨花')">
+            <i class="fa-solid fa-user"></i> 杜梨花
           </button>
           <button class="panel-btn" @click="switchModel('芍药')">
             <i class="fa-solid fa-user"></i> 芍药
@@ -193,12 +193,12 @@ const toggleGuide = () => {
   }
 };
 
-const XIAOER_MODEL_PATH = "./models/萧儿/萧儿 -全身.model3.json";
-const XIAOER_AUDIO_BBL = "./beibalou_boy.wav"
-const XIAOER_AUDIO_HHP = "./haohanpo_boy.wav"
-const XIAOER_MODEL_SCALE = 0.09;
-const XIAOER_MODEL_X = -28;
-const XIAOER_MODEL_Y = -40;
+const XIAOER_MODEL_PATH = "./models/杜梨花/杜梨花合并稿1.model3.json";
+const XIAOER_AUDIO_BBL = "./beibalou.mp3"
+const XIAOER_AUDIO_HHP = "./haohanpo.mp3"
+const XIAOER_MODEL_SCALE = 0.11;
+const XIAOER_MODEL_X = -25;
+const XIAOER_MODEL_Y = -10;
 
 // const XIAOER_AUDIO_PATH = "./models/萧儿/萧儿声音.mp3";
 const SHAOYAO_MODEL_PATH = "./models/芍药/芍药身体运动.model3.json";
@@ -244,10 +244,10 @@ const switchModel = async (name) => {
   console.log(`切换到数字人: ${modelName}`);
   modelName = name;
 
-  const modelPath = modelName === '萧儿' ? XIAOER_MODEL_PATH : SHAOYAO_MODEL_PATH;
-  const modelScale = modelName === '萧儿' ? XIAOER_MODEL_SCALE : SHAOYAO_MODEL_SCALE;
-  const x = modelName === '萧儿' ? XIAOER_MODEL_X : SHAOYAO_MODEL_X;
-  const y = modelName === '萧儿' ? XIAOER_MODEL_Y : SHAOYAO_MODEL_Y;
+  const modelPath = modelName === '杜梨花' ? XIAOER_MODEL_PATH : SHAOYAO_MODEL_PATH;
+  const modelScale = modelName === '杜梨花' ? XIAOER_MODEL_SCALE : SHAOYAO_MODEL_SCALE;
+  const x = modelName === '杜梨花' ? XIAOER_MODEL_X : SHAOYAO_MODEL_X;
+  const y = modelName === '杜梨花' ? XIAOER_MODEL_Y : SHAOYAO_MODEL_Y;
 
   isPanelOpen.value = false;
   isGuideActive.value = true; // 切换模型时自动显示数字人
@@ -375,10 +375,10 @@ const handlePoiClick = async (name, event) => {
   let spk = "";
   if (name === '北八楼') {
     currentText.value = "这是<b>北八楼</b>...";
-    spk = modelName === '萧儿' ? XIAOER_AUDIO_BBL : SHAOYAO_AUDIO_BBL;
+    spk = modelName === '杜梨花' ? XIAOER_AUDIO_BBL : SHAOYAO_AUDIO_BBL;
   } else if (name === '好汉坡') {
     currentText.value = "不到长城非好汉！...";
-    spk = modelName === '萧儿' ? XIAOER_AUDIO_HHP : SHAOYAO_AUDIO_HHP;
+    spk = modelName === '杜梨花' ? XIAOER_AUDIO_HHP : SHAOYAO_AUDIO_HHP;
   }
   playTestAudio(spk);
 };
@@ -443,7 +443,7 @@ onMounted(() => {
     console.error(error);
   }
 
-  modelName = "萧儿";
+  modelName = "杜梨花";
   setTimeout(loadModel, 3000, XIAOER_MODEL_PATH, XIAOER_MODEL_SCALE, XIAOER_MODEL_X, XIAOER_MODEL_Y); // 500毫秒延迟
 });
 
