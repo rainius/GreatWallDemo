@@ -13,7 +13,6 @@
 
     </div>
 
-
     <!-- 2. 固定 UI 层 (不受拖拽影响) -->
     <div class="ui-layer">
       <!-- 遮罩 (可选，增加氛围，不阻挡鼠标事件) -->
@@ -54,9 +53,29 @@
           </button>
         </div>
 
+        <!-- 1. 字幕面板 (移到了这里，与 Avatar 并列) -->
+        <!-- 绑定新的样式对象 :style="subtitleStyle" -->
+        <div class="subtitle-panel" :class="{ 'collapsed': !isBubbleExpanded, 'hidden': !isGuideActive }"
+            @mousedown.stop @touchstart.stop>
+
+          <div class="subtitle-header" @click="toggleBubble">
+            <span class="role-badge">{{ currentBadgeText }}</span>
+            <button class="collapse-btn">
+              <i class="fa-solid" :class="isBubbleExpanded ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+            </button>
+          </div>
+
+          <div class="subtitle-content" v-show="isBubbleExpanded">
+            <span v-html="displayedText"></span>
+          </div>
+        </div>
+
+
         <div class="digital-human-avatar" :class="{ 'hidden': !isGuideActive }" :style="avatarStyle"
           @mousedown="startAvatarDrag" @touchstart="startAvatarDrag" @mousemove="onAvatarDrag" @touchmove="onAvatarDrag"
           @mouseup="endAvatarDrag" @touchend="endAvatarDrag" @mouseleave="endAvatarDrag" ref="avatarRef">
+
+
           <div class="live2d-container" ref="live2dContainer">
             <canvas ref="canvas" id="live2d-canvas"></canvas>
           </div>
@@ -90,6 +109,10 @@ const handleUnityClick = (id) => {
   let name = "北八楼";
   if (id === "btn_B8L") {
     name = "北八楼";
+  } else if (id === "btn_HHP") {
+    name = "好汉坡";
+  } else if (id === "btn_start") {
+    name = "八达岭长城";
   }
   handlePoiClick(name);
 };
@@ -109,7 +132,7 @@ let live2d = null;
 // --- 状态 ---
 const isGuideActive = ref(true);
 const isPanelOpen = ref(true);
-const currentText = ref('欢迎来到八达岭。这张全景图包含了长城的精华路段。您可以<b>拖动屏幕</b>来自由浏览，寻找发光的讲解点。');
+const currentText = ref('八达岭长城坐落于北京延庆的军都山关沟古道北口，是明长城中保存完整、开放最早的精华段。这座雄关自古便是护卫京师的战略要冲，素有“北门锁钥”之称，其巍峨城墙盘旋于山脊，宛若巨龙，展现了古代军事防御工程的智慧。如今，它已成为世界文化遗产，是中外游客领略中华文明的重要窗口。');
 
 // --- 业务逻辑 ---
 const togglePanel = () => {
@@ -125,8 +148,9 @@ const toggleGuide = () => {
 };
 
 const XIAOER_MODEL_PATH = "./models/杜梨花/杜梨花合并稿1.model3.json";
-const XIAOER_AUDIO_BBL = "./beibalou.mp3"
-const XIAOER_AUDIO_HHP = "./haohanpo.mp3"
+const XIAOER_AUDIO_BBL = "./beibalou_dlh.mp3"
+const XIAOER_AUDIO_HHP = "./haohanpo_dlh.mp3"
+const XIAOER_AUDIO_BDL = "./badaling_dlh.mp3"
 const XIAOER_MODEL_SCALE = 0.11;
 const XIAOER_MODEL_X = -25;
 const XIAOER_MODEL_Y = -10;
@@ -135,10 +159,15 @@ const XIAOER_MODEL_Y = -10;
 const SHAOYAO_MODEL_PATH = "./models/芍药/芍药身体运动.model3.json";
 const SHAOYAO_AUDIO_BBL = "./beibalou.mp3"
 const SHAOYAO_AUDIO_HHP = "./haohanpo.mp3"
+const SHAOYAO_AUDIO_BDL = "./badaling.mp3"
 const SHAOYAO_MODEL_SCALE = 0.11;
 const SHAOYAO_MODEL_X = -25;
 const SHAOYAO_MODEL_Y = -10;
 // const SHAOYAO_AUDIO_PATH = "./models/芍药/芍药声音.mp3";
+
+const B8L_CONTENT = "八达岭长城制高点北八楼，海拔高度约888米。这座敌楼是明代长城防御体系的核心枢纽，因其地势最高，素有“观日台”之称。楼体结构上，北八楼的箭窗数量居全线之冠，便于守军瞭望关沟古道，一旦发现敌情，烽火可迅速传至居庸关。站在此处俯瞰群山苍茫，城墙如脊梁蜿蜒于山巅，堪称玉关天堑的缩影！";
+const HHP_CONTENT = "好汉坡这段陡坡通往北八楼，坡度近70°，是体能与意志的双重挑战。坡顶矗立着“不到长城非好汉”石碑，源自毛主席诗词，寓意攀登者皆为英雄。古人巧妙利用山势，将台阶设计为高差不一的乱序阶高，以阻挠敌军骑兵冲锋。您脚下的每块条石重达千斤，当年劳动人民凭借肩扛手抬筑就此景，登顶后可尽览群山苍茫，感受千年历史的壮阔。";
+const START_CONTENT = "八达岭长城坐落于北京延庆的军都山关沟古道北口，是明长城中保存最完整、开放最早的精华段。这座雄关自古便是护卫京师的战略要冲，素有“北门锁钥”之称。其巍峨城墙盘旋于山脊，宛若巨龙，展现了古代军事防御工程的智慧。如今，它已成为世界文化遗产，是中外游客领略中华文明的重要窗口。";
 
 const loadModel = async (model_path, model_scale = 0.5, x = 0, y = 0) => {
   try {
@@ -172,7 +201,7 @@ const loadModel = async (model_path, model_scale = 0.5, x = 0, y = 0) => {
 };
 
 const switchModel = async (name) => {
-  console.log(`切换到数字人: ${modelName}`);
+  console.log(`切换到数字人: ${name}`);
   modelName = name;
 
   const modelPath = modelName === '杜梨花' ? XIAOER_MODEL_PATH : SHAOYAO_MODEL_PATH;
@@ -215,22 +244,38 @@ const avatarStyle = reactive({
 });
 
 const isDocked = ref(true); // 标记是否在默认位置
+// 定义徽章文字，默认可以是当前模型名字，或者“导览员”
+const currentBadgeText = ref(null);
 // const avatarRef = ref(null);
 // eslint-disable-next-line
 const handlePoiClick = (name) => {
   console.log("handlePoiClick", name);
-
+  currentBadgeText.value = name; 
   // 1. 准备音频路径 (先做逻辑计算)
   let spk = "";
   // 注意：这里用 currentModelName 替代 modelName，确保变量名正确
   // 假设你有一个变量存着当前是哪个数字人
+  let content = ""; 
+  console.log("modelName", modelName);
+  console.log(`切换到数字人: ${name}`);
   if (name === '北八楼') {
-    currentText.value = "这是<b>北八楼</b>...";
-    spk = modelName.value === '杜梨花' ? XIAOER_AUDIO_BBL : SHAOYAO_AUDIO_BBL;
+    content = B8L_CONTENT;
+    spk = modelName === '杜梨花' ? XIAOER_AUDIO_BBL : SHAOYAO_AUDIO_BBL;
   } else if (name === '好汉坡') {
-    currentText.value = "不到长城非好汉！...";
-    spk = modelName.value === '杜梨花' ? XIAOER_AUDIO_HHP : SHAOYAO_AUDIO_HHP;
+    content = HHP_CONTENT;
+    spk = modelName === '杜梨花' ? XIAOER_AUDIO_HHP : SHAOYAO_AUDIO_HHP;
+  } else if (name === '八达岭长城') {
+    content = START_CONTENT;
+    spk = modelName === '杜梨花' ? XIAOER_AUDIO_BDL : SHAOYAO_AUDIO_BDL;
   }
+  
+
+  // 【关键】启动打字机
+  // 速度 50ms/字，越小越快
+  typeWriter(content, 50); 
+  
+  // 确保字幕面板展开
+  isBubbleExpanded.value = true;
 
   // 2. 【关键】立即触发音频播放 (不要 await)
   // 这样浏览器能明确知道这是点击事件的一部分
@@ -241,11 +286,84 @@ const handlePoiClick = (name) => {
     isGuideActive.value = true;
     // 如果你需要基于 DOM 尺寸做飞行动画，可以在这里用 nextTick
     nextTick(() => {
-        // 这里放那些需要 DOM 宽高的飞行动画逻辑
-        // updateAvatarPosition(...); 
+      // 这里放那些需要 DOM 宽高的飞行动画逻辑
+      // updateAvatarPosition(...); 
     });
   }
   isPanelOpen.value = false;
+};
+
+// --- 打字机效果变量 ---
+const displayedText = ref(''); // 界面上实际绑定的变量
+let typeWriterTimer = null;    // 计时器引用，用于打断
+
+// --- 打字机核心函数 ---
+// fullText: 完整内容的 HTML 字符串
+// speed: 打字速度 (毫秒/字)
+const typeWriter = (fullText, speed = 50) => {
+  // 1. 如果有正在进行的打字任务，先清除
+  if (typeWriterTimer) {
+    clearInterval(typeWriterTimer);
+    typeWriterTimer = null;
+  }
+
+  // 2. 初始化
+  displayedText.value = ''; // 先清空
+  let index = 0;
+  
+  // 3. 处理 HTML 标签 (进阶优化)
+  // 如果文本包含 <b> 等标签，逐字打印会破坏 HTML 结构。
+  // 简单方案：先剥离 HTML 标签只打印纯文本，或者假设文本是纯文本。
+  // 这里的方案是：简单处理，假设 fullText 是纯文本或者你可以接受标签被当作文本逐个打出来（不推荐）。
+  
+  // --- 推荐方案：纯文本打字机 + 最终渲染 HTML ---
+  // 为了简单起见，我们先假设输入的是纯文本。
+  // 如果必须包含 HTML (如 <b>北八楼</b>)，逻辑会很复杂。
+  // 建议：打字过程中不渲染 HTML 样式，打完后再替换为带样式的 HTML。
+  
+  // 这里使用一个更通用的“纯文本逐字”逻辑：
+  // 如果你的 currentText 里有 HTML 标签，建议在打字时先去除标签，或者使用更复杂的库。
+  // 下面演示最通用的“逐字追加”逻辑：
+
+  // const plainText = fullText.replace(/<[^>]+>/g, ''); // 提取纯文本用于计算长度(可选)
+  // 实际打印还是用 fullText，但要注意标签闭合问题。
+  // 简易版：直接逐字打印 fullText (可能会看到 <b> 源码一闪而过)
+  
+  // --- 最佳实践版：只打印纯文本，打完后替换为富文本 ---
+  // 或者：完全不支持 HTML，只支持纯文本打字。
+  
+  // 让我们采用“逐字打印”逻辑 (假设主要是纯文本)
+  typeWriterTimer = setInterval(() => {
+    // 每次截取 0 到 index 的字符串
+    // 这种方式比 += 更安全，支持 HTML 标签的一半状态（虽然浏览器会自动修复，但最好不要）
+    
+    // 修正：为了支持 HTML，我们通常不建议手动写简单的打字机。
+    // 这里提供一个“智能”版本：直接一次性显示 HTML，或者只对纯文本做打字机。
+    
+    // 让我们用最简单的逻辑：逐字追加
+    const char = fullText.charAt(index);
+    
+    // 如果遇到 <，直接找到 >，一次性把整个标签打出来
+    if (char === '<') {
+      const closingIndex = fullText.indexOf('>', index);
+      if (closingIndex !== -1) {
+        displayedText.value += fullText.substring(index, closingIndex + 1);
+        index = closingIndex + 1;
+      } else {
+        displayedText.value += char;
+        index++;
+      }
+    } else {
+      displayedText.value += char;
+      index++;
+    }
+
+    // 结束条件
+    if (index >= fullText.length) {
+      clearInterval(typeWriterTimer);
+      typeWriterTimer = null;
+    }
+  }, speed);
 };
 
 
@@ -282,6 +400,10 @@ const goHome = () => { console.log("返回主页"); };
 
 // 初始化：设置一个合适的初始位置（例如居中）
 onMounted(() => {
+
+  currentBadgeText.value = "八达岭长城";
+  displayedText.value = START_CONTENT;
+
   // 实际项目中可以计算图片宽度居中，这里暂时写死
   // 确保所需的库已经在全局可用
   PIXI = window.PIXI;
@@ -317,7 +439,7 @@ onMounted(() => {
   // 2. 加载 Unity
   // 请务必核对下面的文件名，必须与你 public/unity-build/Build/ 下的文件名完全一致！
   loadUnity({
-    loaderUrl: "./unity-build/Build/GW.loader.js", 
+    loaderUrl: "./unity-build/Build/GW.loader.js",
     dataUrl: "./unity-build/Build/GW.data",
     frameworkUrl: "./unity-build/Build/GW.framework.js",
     codeUrl: "./unity-build/Build/GW.wasm",
@@ -451,6 +573,13 @@ const endAvatarDrag = () => {
   window.removeEventListener('touchmove', onAvatarDrag);
   window.removeEventListener('mouseup', endAvatarDrag);
   window.removeEventListener('touchend', endAvatarDrag);
+};
+
+// --- 字幕面板控制 ---
+const isBubbleExpanded = ref(true); // 默认展开
+
+const toggleBubble = () => {
+  isBubbleExpanded.value = !isBubbleExpanded.value;
 };
 
 </script>
@@ -889,7 +1018,8 @@ const endAvatarDrag = () => {
   position: relative;
   width: 100%;
   height: 100vh;
-  background: #000; /* Unity 加载前显示黑色背景 */
+  background: #000;
+  /* Unity 加载前显示黑色背景 */
 }
 
 #unity-canvas {
@@ -906,5 +1036,128 @@ const endAvatarDrag = () => {
   color: white;
   font-size: 20px;
   pointer-events: none;
+}
+
+/* 引入一个好看的中文字体 (可选，这里用 Google Fonts 的 Noto Serif SC) */
+/* 定义字体 */
+@font-face {
+  font-family: 'FZQKBYSJW';
+  /* 给字体起个名字 */
+  src: url('@/assets/fonts/FZQKBYSJW.TTF') format('truetype');
+  /* Vue中 @ 代表 src 目录 */
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+  /* 优化加载体验 */
+}
+
+/* --- 字幕面板容器 --- */
+.subtitle-panel {
+  position: absolute;
+  top: 20%;
+  right: 50px;
+  /* 移除 absolute, bottom, left, transform 等定位属性 */
+  /* 因为这些现在由 :style="subtitleStyle" 接管了 */
+  
+  /* 保持尺寸和视觉风格 */
+  width: 320px;
+  
+  background: rgba(20, 20, 30, 0.5);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  
+  overflow: hidden;
+  pointer-events: auto;
+  
+  /* 隐藏时的动画 (配合 Vue 的 transition 或 class) */
+  opacity: 1;
+}
+
+.subtitle-panel.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 折叠状态 */
+.subtitle-panel.collapsed {
+  width: 100px;
+  background: rgba(20, 20, 30, 0.6);
+  /* 注意：折叠后高度变小，JS 的定位逻辑依然有效（底部对齐） */
+}
+
+/* --- 顶部栏 --- */
+.subtitle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  /* 整个头部可点击切换 */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.subtitle-header:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.role-badge {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  /* 紫色高亮 */
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.collapse-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0;
+  transition: 0.3s;
+}
+
+.collapse-btn:hover {
+  color: white;
+}
+
+/* --- 内容区域 --- */
+.subtitle-content {
+  padding: 12px 15px;
+  color: #e2e8f0;
+  font-size: 1.2rem;
+  line-height: 1.8;
+  letter-spacing: 1px;
+  text-align: justify;
+
+  /* 指定字体：衬线体更有“念白”的故事感 */
+  font-family: 'FZQKBYSJW', 'Songti SC', serif;
+
+  /* 限制最大高度，防止文字太长遮挡屏幕 */
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+/* 自定义滚动条 */
+.subtitle-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.subtitle-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+/* --- 移动端适配 --- */
+@media (max-width: 768px) {
+  .subtitle-panel {
+    width: 220px;
+    /* 移动端稍微窄一点 */
+  }
 }
 </style>
