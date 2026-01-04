@@ -439,10 +439,10 @@ onMounted(() => {
   // 2. 加载 Unity
   // 请务必核对下面的文件名，必须与你 public/unity-build/Build/ 下的文件名完全一致！
   loadUnity({
-    loaderUrl: "./unity-build/Build/GW.loader.js",
-    dataUrl: "./unity-build/Build/GW.data",
-    frameworkUrl: "./unity-build/Build/GW.framework.js",
-    codeUrl: "./unity-build/Build/GW.wasm",
+    loaderUrl: "./unity-build/Build/GW1.loader.js",
+    dataUrl: "./unity-build/Build/GW1.data.unityweb",
+    frameworkUrl: "./unity-build/Build/GW1.framework.js.unityweb",
+    codeUrl: "./unity-build/Build/GW1.wasm.unityweb",
   }).then(() => {
     console.log("Unity 加载完成！");
   }).catch((err) => {
